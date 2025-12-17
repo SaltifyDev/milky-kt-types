@@ -8,7 +8,7 @@ import kotlinx.serialization.*
 import kotlinx.serialization.json.*
 
 const val milkyVersion = "1.1"
-const val milkyPackageVersion = "1.1.0-rc.2"
+const val milkyPackageVersion = "1.1.0-rc.3"
 
 val milkyJsonModule = Json {
     ignoreUnknownKeys = true
@@ -998,7 +998,7 @@ sealed class IncomingSegment {
             /** 市场表情包 ID */
             @SerialName("emoji_package_id") val emojiPackageId: Int,
             /** 市场表情 ID */
-            @SerialName("emoji_id") val emojiId: Int,
+            @SerialName("emoji_id") val emojiId: String,
             /** 市场表情 Key */
             @SerialName("key") val key: String,
             /** 市场表情预览文本 */

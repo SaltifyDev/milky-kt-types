@@ -7,8 +7,8 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.*
 import kotlinx.serialization.json.*
 
-const val milkyVersion = "1.0"
-const val milkyPackageVersion = "1.0.0"
+const val milkyVersion = "1.1"
+const val milkyPackageVersion = "1.1.0-rc.2"
 
 val milkyJsonModule = Json {
     ignoreUnknownKeys = true
@@ -250,6 +250,8 @@ sealed class Event {
             @SerialName("group_id") val groupId: Long,
             /** 发生变更的用户 QQ 号 */
             @SerialName("user_id") val userId: Long,
+            /** 操作者 QQ 号 */
+            @SerialName("operator_id") val operatorId: Long,
             /** 是否被设置为管理员，`false` 表示被取消管理员 */
             @SerialName("is_set") val isSet: Boolean,
         )
@@ -272,6 +274,8 @@ sealed class Event {
             @SerialName("group_id") val groupId: Long,
             /** 发生变更的消息序列号 */
             @SerialName("message_seq") val messageSeq: Long,
+            /** 操作者 QQ 号 */
+            @SerialName("operator_id") val operatorId: Long,
             /** 是否被设置为精华，`false` 表示被取消精华 */
             @SerialName("is_set") val isSet: Boolean,
         )
@@ -859,6 +863,8 @@ sealed class IncomingSegment {
         class Data(
             /** 表情 ID */
             @SerialName("face_id") val faceId: String,
+            /** 是否为超级表情 */
+            @SerialName("is_large") val isLarge: Boolean,
         )
     }
 
@@ -971,6 +977,12 @@ sealed class IncomingSegment {
         class Data(
             /** 合并转发 ID */
             @SerialName("forward_id") val forwardId: String,
+            /** 合并转发标题 */
+            @SerialName("title") val title: String,
+            /** 合并转发预览文本 */
+            @SerialName("preview") val preview: List<String>,
+            /** 合并转发摘要 */
+            @SerialName("summary") val summary: String,
         )
     }
 
@@ -983,6 +995,14 @@ sealed class IncomingSegment {
     ) : IncomingSegment() {
         @Serializable
         class Data(
+            /** 市场表情包 ID */
+            @SerialName("emoji_package_id") val emojiPackageId: Int,
+            /** 市场表情 ID */
+            @SerialName("emoji_id") val emojiId: Int,
+            /** 市场表情 Key */
+            @SerialName("key") val key: String,
+            /** 市场表情预览文本 */
+            @SerialName("summary") val summary: String,
             /** 市场表情 URL */
             @SerialName("url") val url: String,
         )
@@ -1087,6 +1107,8 @@ sealed class OutgoingSegment {
         class Data(
             /** 表情 ID */
             @SerialName("face_id") val faceId: String,
+            /** 是否为超级表情 */
+            @SerialName("is_large") val isLarge: Boolean = false,
         )
     }
 
@@ -1115,10 +1137,10 @@ sealed class OutgoingSegment {
         class Data(
             /** 文件 URI，支持 `file://` `http(s)://` `base64://` 三种格式 */
             @SerialName("uri") val uri: String,
+            /** 图片类型 */
+            @SerialName("sub_type") val subType: String = "normal",
             /** 图片预览文本 */
             @SerialName("summary") val summary: String? = null,
-            /** 图片类型 */
-            @SerialName("sub_type") val subType: String,
         )
     }
 
@@ -1206,7 +1228,7 @@ class GetImplInfoOutput(
     @SerialName("qq_protocol_version") val qqProtocolVersion: String,
     /** 协议端使用的 QQ 协议平台 */
     @SerialName("qq_protocol_type") val qqProtocolType: String,
-    /** 协议端实现的 Milky 协议版本，目前为 "1.0" */
+    /** 协议端实现的 Milky 协议版本，目前为 "1.1" */
     @SerialName("milky_version") val milkyVersion: String,
 )
 
@@ -1320,6 +1342,38 @@ class GetGroupMemberInfoInput(
 class GetGroupMemberInfoOutput(
     /** 群成员信息 */
     @SerialName("member") val member: GroupMemberEntity,
+)
+
+@Serializable
+class SetAvatarInput(
+    /** 头像文件 URI，支持 `file://` `http(s)://` `base64://` 三种格式 */
+    @SerialName("uri") val uri: String,
+)
+
+typealias SetAvatarOutput = ApiEmptyStruct
+
+@Serializable
+class SetNicknameInput(
+    /** 新昵称 */
+    @SerialName("new_card") val newCard: String,
+)
+
+typealias SetNicknameOutput = ApiEmptyStruct
+
+@Serializable
+class SetBioInput(
+    /** 新个性签名 */
+    @SerialName("new_bio") val newBio: String,
+)
+
+typealias SetBioOutput = ApiEmptyStruct
+
+typealias GetCustomFaceUrlListInput = ApiEmptyStruct
+
+@Serializable
+class GetCustomFaceUrlListOutput(
+    /** 自定义表情 URL 列表 */
+    @SerialName("urls") val urls: List<String>,
 )
 
 @Serializable
@@ -1489,6 +1543,14 @@ class SendProfileLikeInput(
 )
 
 typealias SendProfileLikeOutput = ApiEmptyStruct
+
+@Serializable
+class DeleteFriendInput(
+    /** 好友 QQ 号 */
+    @SerialName("user_id") val userId: Long,
+)
+
+typealias DeleteFriendOutput = ApiEmptyStruct
 
 @Serializable
 class GetFriendRequestsInput(
@@ -1961,6 +2023,14 @@ sealed class ApiEndpoint<T : Any, R : Any>(val path: String) {
     object GetGroupMemberList : ApiEndpoint<GetGroupMemberListInput, GetGroupMemberListOutput>("/get_group_member_list")
     /** 获取群成员信息 */
     object GetGroupMemberInfo : ApiEndpoint<GetGroupMemberInfoInput, GetGroupMemberInfoOutput>("/get_group_member_info")
+    /** 设置 QQ 账号头像 */
+    object SetAvatar : ApiEndpoint<SetAvatarInput, SetAvatarOutput>("/set_avatar")
+    /** 设置 QQ 账号昵称 */
+    object SetNickname : ApiEndpoint<SetNicknameInput, SetNicknameOutput>("/set_nickname")
+    /** 设置 QQ 账号个性签名 */
+    object SetBio : ApiEndpoint<SetBioInput, SetBioOutput>("/set_bio")
+    /** 获取自定义表情 URL 列表 */
+    object GetCustomFaceUrlList : ApiEndpoint<GetCustomFaceUrlListInput, GetCustomFaceUrlListOutput>("/get_custom_face_url_list")
     /** 获取 Cookies */
     object GetCookies : ApiEndpoint<GetCookiesInput, GetCookiesOutput>("/get_cookies")
     /** 获取 CSRF Token */
@@ -1987,6 +2057,8 @@ sealed class ApiEndpoint<T : Any, R : Any>(val path: String) {
     object SendFriendNudge : ApiEndpoint<SendFriendNudgeInput, SendFriendNudgeOutput>("/send_friend_nudge")
     /** 发送名片点赞 */
     object SendProfileLike : ApiEndpoint<SendProfileLikeInput, SendProfileLikeOutput>("/send_profile_like")
+    /** 删除好友 */
+    object DeleteFriend : ApiEndpoint<DeleteFriendInput, DeleteFriendOutput>("/delete_friend")
     /** 获取好友请求列表 */
     object GetFriendRequests : ApiEndpoint<GetFriendRequestsInput, GetFriendRequestsOutput>("/get_friend_requests")
     /** 同意好友请求 */

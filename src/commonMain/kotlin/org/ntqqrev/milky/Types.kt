@@ -8,7 +8,7 @@ import kotlinx.serialization.*
 import kotlinx.serialization.json.*
 
 const val milkyVersion = "1.1"
-const val milkyPackageVersion = "1.1.0-rc.3"
+const val milkyPackageVersion = "1.1.0-rc.5"
 
 val milkyJsonModule = Json {
     ignoreUnknownKeys = true
@@ -1355,7 +1355,7 @@ typealias SetAvatarOutput = ApiEmptyStruct
 @Serializable
 class SetNicknameInput(
     /** 新昵称 */
-    @SerialName("new_card") val newCard: String,
+    @SerialName("new_nickname") val newNickname: String,
 )
 
 typealias SetNicknameOutput = ApiEmptyStruct

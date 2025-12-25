@@ -10,6 +10,9 @@ import kotlinx.serialization.json.*
 const val milkyVersion = "1.1"
 const val milkyPackageVersion = "1.1.0-rc.5"
 
+@Target(AnnotationTarget.PROPERTY)
+annotation class LiteralDefault(val value: String)
+
 val milkyJsonModule = Json {
     ignoreUnknownKeys = true
     explicitNulls = false
@@ -1108,7 +1111,7 @@ sealed class OutgoingSegment {
             /** 表情 ID */
             @SerialName("face_id") val faceId: String,
             /** 是否为超级表情 */
-            @SerialName("is_large") val isLarge: Boolean = false,
+            @SerialName("is_large") @LiteralDefault("false") val isLarge: Boolean = false,
         )
     }
 
@@ -1138,7 +1141,7 @@ sealed class OutgoingSegment {
             /** 文件 URI，支持 `file://` `http(s)://` `base64://` 三种格式 */
             @SerialName("uri") val uri: String,
             /** 图片类型 */
-            @SerialName("sub_type") val subType: String = "normal",
+            @SerialName("sub_type") @LiteralDefault("\"normal\"") val subType: String = "normal",
             /** 图片预览文本 */
             @SerialName("summary") val summary: String? = null,
         )
@@ -1265,7 +1268,7 @@ class GetUserProfileOutput(
 @Serializable
 class GetFriendListInput(
     /** 是否强制不使用缓存 */
-    @SerialName("no_cache") val noCache: Boolean = false,
+    @SerialName("no_cache") @LiteralDefault("false") val noCache: Boolean = false,
 )
 
 @Serializable
@@ -1279,7 +1282,7 @@ class GetFriendInfoInput(
     /** 好友 QQ 号 */
     @SerialName("user_id") val userId: Long,
     /** 是否强制不使用缓存 */
-    @SerialName("no_cache") val noCache: Boolean = false,
+    @SerialName("no_cache") @LiteralDefault("false") val noCache: Boolean = false,
 )
 
 @Serializable
@@ -1291,7 +1294,7 @@ class GetFriendInfoOutput(
 @Serializable
 class GetGroupListInput(
     /** 是否强制不使用缓存 */
-    @SerialName("no_cache") val noCache: Boolean = false,
+    @SerialName("no_cache") @LiteralDefault("false") val noCache: Boolean = false,
 )
 
 @Serializable
@@ -1305,7 +1308,7 @@ class GetGroupInfoInput(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
     /** 是否强制不使用缓存 */
-    @SerialName("no_cache") val noCache: Boolean = false,
+    @SerialName("no_cache") @LiteralDefault("false") val noCache: Boolean = false,
 )
 
 @Serializable
@@ -1319,7 +1322,7 @@ class GetGroupMemberListInput(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
     /** 是否强制不使用缓存 */
-    @SerialName("no_cache") val noCache: Boolean = false,
+    @SerialName("no_cache") @LiteralDefault("false") val noCache: Boolean = false,
 )
 
 @Serializable
@@ -1335,7 +1338,7 @@ class GetGroupMemberInfoInput(
     /** 群成员 QQ 号 */
     @SerialName("user_id") val userId: Long,
     /** 是否强制不使用缓存 */
-    @SerialName("no_cache") val noCache: Boolean = false,
+    @SerialName("no_cache") @LiteralDefault("false") val noCache: Boolean = false,
 )
 
 @Serializable
@@ -1475,7 +1478,7 @@ class GetHistoryMessagesInput(
     /** 起始消息序列号，由此开始从新到旧查询，不提供则从最新消息开始 */
     @SerialName("start_message_seq") val startMessageSeq: Long? = null,
     /** 期望获取到的消息数量，最多 30 条 */
-    @SerialName("limit") val limit: Int = 20,
+    @SerialName("limit") @LiteralDefault("20") val limit: Int = 20,
 )
 
 @Serializable
@@ -1529,7 +1532,7 @@ class SendFriendNudgeInput(
     /** 好友 QQ 号 */
     @SerialName("user_id") val userId: Long,
     /** 是否戳自己 */
-    @SerialName("is_self") val isSelf: Boolean = false,
+    @SerialName("is_self") @LiteralDefault("false") val isSelf: Boolean = false,
 )
 
 typealias SendFriendNudgeOutput = ApiEmptyStruct
@@ -1539,7 +1542,7 @@ class SendProfileLikeInput(
     /** 好友 QQ 号 */
     @SerialName("user_id") val userId: Long,
     /** 点赞数量 */
-    @SerialName("count") val count: Int = 1,
+    @SerialName("count") @LiteralDefault("1") val count: Int = 1,
 )
 
 typealias SendProfileLikeOutput = ApiEmptyStruct
@@ -1555,9 +1558,9 @@ typealias DeleteFriendOutput = ApiEmptyStruct
 @Serializable
 class GetFriendRequestsInput(
     /** 获取的最大请求数量 */
-    @SerialName("limit") val limit: Int = 20,
+    @SerialName("limit") @LiteralDefault("20") val limit: Int = 20,
     /** `true` 表示只获取被过滤（由风险账号发起）的通知，`false` 表示只获取未被过滤的通知 */
-    @SerialName("is_filtered") val isFiltered: Boolean = false,
+    @SerialName("is_filtered") @LiteralDefault("false") val isFiltered: Boolean = false,
 )
 
 @Serializable
@@ -1571,7 +1574,7 @@ class AcceptFriendRequestInput(
     /** 请求发起者 UID */
     @SerialName("initiator_uid") val initiatorUid: String,
     /** 是否是被过滤的请求 */
-    @SerialName("is_filtered") val isFiltered: Boolean = false,
+    @SerialName("is_filtered") @LiteralDefault("false") val isFiltered: Boolean = false,
 )
 
 typealias AcceptFriendRequestOutput = ApiEmptyStruct
@@ -1581,7 +1584,7 @@ class RejectFriendRequestInput(
     /** 请求发起者 UID */
     @SerialName("initiator_uid") val initiatorUid: String,
     /** 是否是被过滤的请求 */
-    @SerialName("is_filtered") val isFiltered: Boolean = false,
+    @SerialName("is_filtered") @LiteralDefault("false") val isFiltered: Boolean = false,
     /** 拒绝理由 */
     @SerialName("reason") val reason: String? = null,
 )
@@ -1641,7 +1644,7 @@ class SetGroupMemberAdminInput(
     /** 被设置的 QQ 号 */
     @SerialName("user_id") val userId: Long,
     /** 是否设置为管理员，`false` 表示取消管理员 */
-    @SerialName("is_set") val isSet: Boolean = true,
+    @SerialName("is_set") @LiteralDefault("true") val isSet: Boolean = true,
 )
 
 typealias SetGroupMemberAdminOutput = ApiEmptyStruct
@@ -1653,7 +1656,7 @@ class SetGroupMemberMuteInput(
     /** 被设置的 QQ 号 */
     @SerialName("user_id") val userId: Long,
     /** 禁言持续时间（秒），设为 `0` 为取消禁言 */
-    @SerialName("duration") val duration: Int = 0,
+    @SerialName("duration") @LiteralDefault("0") val duration: Int = 0,
 )
 
 typealias SetGroupMemberMuteOutput = ApiEmptyStruct
@@ -1663,7 +1666,7 @@ class SetGroupWholeMuteInput(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
     /** 是否开启全员禁言，`false` 表示取消全员禁言 */
-    @SerialName("is_mute") val isMute: Boolean = true,
+    @SerialName("is_mute") @LiteralDefault("true") val isMute: Boolean = true,
 )
 
 typealias SetGroupWholeMuteOutput = ApiEmptyStruct
@@ -1675,7 +1678,7 @@ class KickGroupMemberInput(
     /** 被踢的 QQ 号 */
     @SerialName("user_id") val userId: Long,
     /** 是否拒绝加群申请，`false` 表示不拒绝 */
-    @SerialName("reject_add_request") val rejectAddRequest: Boolean = false,
+    @SerialName("reject_add_request") @LiteralDefault("false") val rejectAddRequest: Boolean = false,
 )
 
 typealias KickGroupMemberOutput = ApiEmptyStruct
@@ -1739,7 +1742,7 @@ class SetGroupEssenceMessageInput(
     /** 消息序列号 */
     @SerialName("message_seq") val messageSeq: Long,
     /** 是否设置为精华消息，`false` 表示取消精华 */
-    @SerialName("is_set") val isSet: Boolean = true,
+    @SerialName("is_set") @LiteralDefault("true") val isSet: Boolean = true,
 )
 
 typealias SetGroupEssenceMessageOutput = ApiEmptyStruct
@@ -1761,7 +1764,7 @@ class SendGroupMessageReactionInput(
     /** 表情 ID */
     @SerialName("reaction") val reaction: String,
     /** 是否添加表情，`false` 表示取消 */
-    @SerialName("is_add") val isAdd: Boolean = true,
+    @SerialName("is_add") @LiteralDefault("true") val isAdd: Boolean = true,
 )
 
 typealias SendGroupMessageReactionOutput = ApiEmptyStruct
@@ -1781,9 +1784,9 @@ class GetGroupNotificationsInput(
     /** 起始通知序列号 */
     @SerialName("start_notification_seq") val startNotificationSeq: Long? = null,
     /** `true` 表示只获取被过滤（由风险账号发起）的通知，`false` 表示只获取未被过滤的通知 */
-    @SerialName("is_filtered") val isFiltered: Boolean = false,
+    @SerialName("is_filtered") @LiteralDefault("false") val isFiltered: Boolean = false,
     /** 获取的最大通知数量 */
-    @SerialName("limit") val limit: Int = 20,
+    @SerialName("limit") @LiteralDefault("20") val limit: Int = 20,
 )
 
 @Serializable
@@ -1803,7 +1806,7 @@ class AcceptGroupRequestInput(
     /** 请求所在的群号 */
     @SerialName("group_id") val groupId: Long,
     /** 是否是被过滤的请求 */
-    @SerialName("is_filtered") val isFiltered: Boolean = false,
+    @SerialName("is_filtered") @LiteralDefault("false") val isFiltered: Boolean = false,
 )
 
 typealias AcceptGroupRequestOutput = ApiEmptyStruct
@@ -1817,7 +1820,7 @@ class RejectGroupRequestInput(
     /** 请求所在的群号 */
     @SerialName("group_id") val groupId: Long,
     /** 是否是被过滤的请求 */
-    @SerialName("is_filtered") val isFiltered: Boolean = false,
+    @SerialName("is_filtered") @LiteralDefault("false") val isFiltered: Boolean = false,
     /** 拒绝理由 */
     @SerialName("reason") val reason: String? = null,
 )
@@ -1867,7 +1870,7 @@ class UploadGroupFileInput(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
     /** 目标文件夹 ID */
-    @SerialName("parent_folder_id") val parentFolderId: String = "/",
+    @SerialName("parent_folder_id") @LiteralDefault("\"/\"") val parentFolderId: String = "/",
     /** 文件 URI，支持 `file://` `http(s)://` `base64://` 三种格式 */
     @SerialName("file_uri") val fileUri: String,
     /** 文件名称 */
@@ -1915,7 +1918,7 @@ class GetGroupFilesInput(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
     /** 父文件夹 ID */
-    @SerialName("parent_folder_id") val parentFolderId: String = "/",
+    @SerialName("parent_folder_id") @LiteralDefault("\"/\"") val parentFolderId: String = "/",
 )
 
 @Serializable
@@ -1933,9 +1936,9 @@ class MoveGroupFileInput(
     /** 文件 ID */
     @SerialName("file_id") val fileId: String,
     /** 文件所在的文件夹 ID */
-    @SerialName("parent_folder_id") val parentFolderId: String = "/",
+    @SerialName("parent_folder_id") @LiteralDefault("\"/\"") val parentFolderId: String = "/",
     /** 目标文件夹 ID */
-    @SerialName("target_folder_id") val targetFolderId: String = "/",
+    @SerialName("target_folder_id") @LiteralDefault("\"/\"") val targetFolderId: String = "/",
 )
 
 typealias MoveGroupFileOutput = ApiEmptyStruct
@@ -1947,7 +1950,7 @@ class RenameGroupFileInput(
     /** 文件 ID */
     @SerialName("file_id") val fileId: String,
     /** 文件所在的文件夹 ID */
-    @SerialName("parent_folder_id") val parentFolderId: String = "/",
+    @SerialName("parent_folder_id") @LiteralDefault("\"/\"") val parentFolderId: String = "/",
     /** 新文件名称 */
     @SerialName("new_file_name") val newFileName: String,
 )

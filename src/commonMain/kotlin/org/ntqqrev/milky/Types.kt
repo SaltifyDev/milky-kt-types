@@ -1,4 +1,4 @@
-// Auto-generated file
+// Generated from Milky 1.1 (1.1.0)
 @file:OptIn(ExperimentalSerializationApi::class)
 
 package org.ntqqrev.milky
@@ -8,7 +8,7 @@ import kotlinx.serialization.*
 import kotlinx.serialization.json.*
 
 const val milkyVersion = "1.1"
-const val milkyPackageVersion = "1.1.0-rc.5"
+const val milkyPackageVersion = "1.1.0"
 
 @Target(AnnotationTarget.PROPERTY)
 annotation class LiteralDefault(val value: String)

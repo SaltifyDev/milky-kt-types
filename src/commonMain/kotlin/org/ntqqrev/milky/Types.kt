@@ -1,14 +1,16 @@
-// Generated from Milky 1.1 (1.1.0)
+// Generated from Milky 1.2 (1.2.0-draft.1)
 @file:OptIn(ExperimentalSerializationApi::class)
 
 package org.ntqqrev.milky
 
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.*
+import kotlinx.serialization.builtins.*
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.encoding.*
 import kotlinx.serialization.json.*
 
-const val milkyVersion = "1.1"
-const val milkyPackageVersion = "1.1.0"
+const val milkyVersion = "1.2"
+const val milkyPackageVersion = "1.2.0-draft.1"
 
 @Target(AnnotationTarget.PROPERTY)
 annotation class LiteralDefault(val value: String)
@@ -16,6 +18,72 @@ annotation class LiteralDefault(val value: String)
 val milkyJsonModule = Json {
     ignoreUnknownKeys = true
     explicitNulls = false
+}
+
+internal class DropBadElementListSerializer<T>(private val elementSerializer: KSerializer<T>) : KSerializer<List<T>> {
+    val listSerializer = ListSerializer(elementSerializer)
+
+    override val descriptor: SerialDescriptor =
+        listSerializer.descriptor
+
+    override fun serialize(encoder: Encoder, value: List<T>) {
+        encoder.encodeSerializableValue(listSerializer, value)
+    }
+
+    override fun deserialize(decoder: Decoder): List<T> {
+        if (decoder !is JsonDecoder) {
+            throw SerializationException("This serializer can be used only with Json format")
+        }
+
+        val element = decoder.decodeJsonElement() as? JsonArray
+            ?: throw SerializationException("Expected JsonArray for List deserialization")
+
+        val out = ArrayList<T>(element.size)
+        for (e in element) {
+            try {
+                out += decoder.json.decodeFromJsonElement(elementSerializer, e)
+            } catch (_: SerializationException) {
+                // discard bad element quietly
+            }
+        }
+        return out
+    }
+}
+
+internal class TransformUnknownSegmentListSerializer(private val elementSerializer: KSerializer<IncomingSegment>) :
+    KSerializer<List<IncomingSegment>> {
+
+    val listSerializer = ListSerializer(elementSerializer)
+
+    override val descriptor: SerialDescriptor =
+        listSerializer.descriptor
+
+    override fun serialize(encoder: Encoder, value: List<IncomingSegment>) {
+        encoder.encodeSerializableValue(listSerializer, value)
+    }
+
+    override fun deserialize(decoder: Decoder): List<IncomingSegment> {
+        if (decoder !is JsonDecoder) {
+            throw SerializationException("This serializer can be used only with Json format")
+        }
+
+        val element = decoder.decodeJsonElement() as? JsonArray
+            ?: throw SerializationException("Expected JsonArray for List deserialization")
+
+        val out = ArrayList<IncomingSegment>(element.size)
+        for (e in element) {
+            out += try {
+                decoder.json.decodeFromJsonElement(elementSerializer, e)
+            } catch (_: SerializationException) {
+                IncomingSegment.Text(
+                    data = IncomingSegment.Text.Data(
+                        text = "[${e.jsonObject["type"]!!.jsonPrimitive.content}]"
+                    )
+                )
+            }
+        }
+        return out
+    }
 }
 
 // ####################################
@@ -731,6 +799,7 @@ sealed class IncomingMessage {
         /** 消息 Unix 时间戳（秒） */
         @SerialName("time") val time: Long,
         /** 消息段列表 */
+        @Serializable(with = TransformUnknownSegmentListSerializer::class)
         @SerialName("segments") val segments: List<IncomingSegment>,
         /** 好友信息 */
         @SerialName("friend") val friend: FriendEntity,
@@ -749,6 +818,7 @@ sealed class IncomingMessage {
         /** 消息 Unix 时间戳（秒） */
         @SerialName("time") val time: Long,
         /** 消息段列表 */
+        @Serializable(with = TransformUnknownSegmentListSerializer::class)
         @SerialName("segments") val segments: List<IncomingSegment>,
         /** 群信息 */
         @SerialName("group") val group: GroupEntity,
@@ -769,6 +839,7 @@ sealed class IncomingMessage {
         /** 消息 Unix 时间戳（秒） */
         @SerialName("time") val time: Long,
         /** 消息段列表 */
+        @Serializable(with = TransformUnknownSegmentListSerializer::class)
         @SerialName("segments") val segments: List<IncomingSegment>,
         /** 临时会话发送者的所在的群信息 */
         @SerialName("group") val group: GroupEntity? = null,
@@ -778,6 +849,8 @@ sealed class IncomingMessage {
 /** 接收转发消息 */
 @Serializable
 class IncomingForwardedMessage(
+    /** 消息序列号 */
+    @SerialName("message_seq") val messageSeq: Long,
     /** 发送者名称 */
     @SerialName("sender_name") val senderName: String,
     /** 发送者头像 URL */
@@ -785,6 +858,7 @@ class IncomingForwardedMessage(
     /** 消息 Unix 时间戳（秒） */
     @SerialName("time") val time: Long,
     /** 消息段列表 */
+    @Serializable(with = TransformUnknownSegmentListSerializer::class)
     @SerialName("segments") val segments: List<IncomingSegment>,
 )
 
@@ -808,6 +882,7 @@ class GroupEssenceMessage(
     /** 消息被设置精华时的 Unix 时间戳（秒） */
     @SerialName("operation_time") val operationTime: Long,
     /** 消息段列表 */
+    @Serializable(with = TransformUnknownSegmentListSerializer::class)
     @SerialName("segments") val segments: List<IncomingSegment>,
 )
 
@@ -882,6 +957,15 @@ sealed class IncomingSegment {
         class Data(
             /** 被引用的消息序列号 */
             @SerialName("message_seq") val messageSeq: Long,
+            /** 被引用的消息发送者 QQ 号 */
+            @SerialName("sender_id") val senderId: Long,
+            /** 被引用的消息发送者名称，仅在合并转发中能够获取 */
+            @SerialName("sender_name") val senderName: String? = null,
+            /** 被引用的消息的 Unix 时间戳（秒） */
+            @SerialName("time") val time: Long,
+            /** 被引用的消息内容 */
+            @Serializable(with = TransformUnknownSegmentListSerializer::class)
+            @SerialName("segments") val segments: List<IncomingSegment>,
         )
     }
 
@@ -1052,6 +1136,7 @@ class OutgoingForwardedMessage(
     /** 发送者名称 */
     @SerialName("sender_name") val senderName: String,
     /** 消息段列表 */
+    @Serializable(with = DropBadElementListSerializer::class)
     @SerialName("segments") val segments: List<OutgoingSegment>,
 )
 
@@ -1186,8 +1271,14 @@ sealed class OutgoingSegment {
     ) : OutgoingSegment() {
         @Serializable
         class Data(
-            /** 合并转发消息段 */
+            /** 合并转发消息内容 */
             @SerialName("messages") val messages: List<OutgoingForwardedMessage>,
+            /** 合并转发标题 */
+            @SerialName("title") val title: String? = null,
+            /** 合并转发预览文本，若提供，至少 1 条，至多 4 条 */
+            @SerialName("preview") val preview: List<String>? = null,
+            /** 合并转发摘要 */
+            @SerialName("summary") val summary: String? = null,
         )
     }
 }
@@ -1231,7 +1322,7 @@ class GetImplInfoOutput(
     @SerialName("qq_protocol_version") val qqProtocolVersion: String,
     /** 协议端使用的 QQ 协议平台 */
     @SerialName("qq_protocol_type") val qqProtocolType: String,
-    /** 协议端实现的 Milky 协议版本，目前为 "1.1" */
+    /** 协议端实现的 Milky 协议版本，目前为 "1.2" */
     @SerialName("milky_version") val milkyVersion: String,
 )
 
@@ -1406,6 +1497,7 @@ class SendPrivateMessageInput(
     /** 好友 QQ 号 */
     @SerialName("user_id") val userId: Long,
     /** 消息内容 */
+    @Serializable(with = DropBadElementListSerializer::class)
     @SerialName("message") val message: List<OutgoingSegment>,
 )
 
@@ -1422,6 +1514,7 @@ class SendGroupMessageInput(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
     /** 消息内容 */
+    @Serializable(with = DropBadElementListSerializer::class)
     @SerialName("message") val message: List<OutgoingSegment>,
 )
 
@@ -1484,6 +1577,7 @@ class GetHistoryMessagesInput(
 @Serializable
 class GetHistoryMessagesOutput(
     /** 获取到的消息（message_seq 升序排列），部分消息可能不存在，如撤回的消息 */
+    @Serializable(with = DropBadElementListSerializer::class)
     @SerialName("messages") val messages: List<IncomingMessage>,
     /** 下一页起始消息序列号 */
     @SerialName("next_message_seq") val nextMessageSeq: Long? = null,
@@ -1792,6 +1886,7 @@ class GetGroupNotificationsInput(
 @Serializable
 class GetGroupNotificationsOutput(
     /** 获取到的群通知（notification_seq 降序排列），序列号不一定连续 */
+    @Serializable(with = DropBadElementListSerializer::class)
     @SerialName("notifications") val notifications: List<GroupNotification>,
     /** 下一页起始通知序列号 */
     @SerialName("next_notification_seq") val nextNotificationSeq: Long? = null,

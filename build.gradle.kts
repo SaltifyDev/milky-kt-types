@@ -54,6 +54,10 @@ kotlin {
         commonMain.dependencies {
             implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.10.0-RC")
         }
+
+        jvmTest.dependencies {
+            implementation(kotlin("test"))
+        }
     }
 
     jvmToolchain(21)

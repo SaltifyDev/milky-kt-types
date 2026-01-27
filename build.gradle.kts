@@ -52,7 +52,7 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.10.0-RC")
+            implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.10.0")
         }
     }
 

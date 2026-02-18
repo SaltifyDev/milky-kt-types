@@ -1,14 +1,16 @@
-// Generated from Milky 1.1 (1.1.0)
+// Generated from Milky 1.2 (1.2.0-rc.1)
 @file:OptIn(ExperimentalSerializationApi::class)
 
 package org.ntqqrev.milky
 
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.*
+import kotlinx.serialization.builtins.*
+import kotlinx.serialization.descriptors.*
+import kotlinx.serialization.encoding.*
 import kotlinx.serialization.json.*
 
-const val milkyVersion = "1.1"
-const val milkyPackageVersion = "1.1.0"
+const val milkyVersion = "1.2"
+const val milkyPackageVersion = "1.2.0-rc.1"
 
 @Target(AnnotationTarget.PROPERTY)
 annotation class LiteralDefault(val value: String)
@@ -16,6 +18,72 @@ annotation class LiteralDefault(val value: String)
 val milkyJsonModule = Json {
     ignoreUnknownKeys = true
     explicitNulls = false
+}
+
+internal class DropBadElementListSerializer<T>(private val elementSerializer: KSerializer<T>) : KSerializer<List<T>> {
+    val listSerializer = ListSerializer(elementSerializer)
+
+    override val descriptor: SerialDescriptor =
+        listSerializer.descriptor
+
+    override fun serialize(encoder: Encoder, value: List<T>) {
+        encoder.encodeSerializableValue(listSerializer, value)
+    }
+
+    override fun deserialize(decoder: Decoder): List<T> {
+        if (decoder !is JsonDecoder) {
+            throw SerializationException("This serializer can be used only with Json format")
+        }
+
+        val element = decoder.decodeJsonElement() as? JsonArray
+            ?: throw SerializationException("Expected JsonArray for List deserialization")
+
+        val out = ArrayList<T>(element.size)
+        for (e in element) {
+            try {
+                out += decoder.json.decodeFromJsonElement(elementSerializer, e)
+            } catch (_: SerializationException) {
+                // discard bad element quietly
+            }
+        }
+        return out
+    }
+}
+
+internal class TransformUnknownSegmentListSerializer(private val elementSerializer: KSerializer<IncomingSegment>) :
+    KSerializer<List<IncomingSegment>> {
+
+    val listSerializer = ListSerializer(elementSerializer)
+
+    override val descriptor: SerialDescriptor =
+        listSerializer.descriptor
+
+    override fun serialize(encoder: Encoder, value: List<IncomingSegment>) {
+        encoder.encodeSerializableValue(listSerializer, value)
+    }
+
+    override fun deserialize(decoder: Decoder): List<IncomingSegment> {
+        if (decoder !is JsonDecoder) {
+            throw SerializationException("This serializer can be used only with Json format")
+        }
+
+        val element = decoder.decodeJsonElement() as? JsonArray
+            ?: throw SerializationException("Expected JsonArray for List deserialization")
+
+        val out = ArrayList<IncomingSegment>(element.size)
+        for (e in element) {
+            out += try {
+                decoder.json.decodeFromJsonElement(elementSerializer, e)
+            } catch (_: SerializationException) {
+                IncomingSegment.Text(
+                    data = IncomingSegment.Text.Data(
+                        text = "[${e.jsonObject["type"]!!.jsonPrimitive.content}]"
+                    )
+                )
+            }
+        }
+        return out
+    }
 }
 
 // ####################################
@@ -26,19 +94,24 @@ val milkyJsonModule = Json {
 @Serializable
 @JsonClassDiscriminator("event_type")
 sealed class Event {
+    /** 事件 Unix 时间戳（秒） */
+    abstract val time: Long
+    /** 机器人 QQ 号 */
+    abstract val selfId: Long
+
     /** 机器人离线事件 */
     @Serializable
     @SerialName("bot_offline")
-    class BotOffline(
+    data class BotOffline(
         /** 事件 Unix 时间戳（秒） */
-        @SerialName("time") val time: Long,
+        @SerialName("time") override val time: Long,
         /** 机器人 QQ 号 */
-        @SerialName("self_id") val selfId: Long,
+        @SerialName("self_id") override val selfId: Long,
         /** 数据字段 */
         @SerialName("data") val data: Data
     ) : Event() {
         @Serializable
-        class Data(
+        data class Data(
             /** 下线原因 */
             @SerialName("reason") val reason: String,
         )
@@ -47,11 +120,11 @@ sealed class Event {
     /** 消息接收事件 */
     @Serializable
     @SerialName("message_receive")
-    class MessageReceive(
+    data class MessageReceive(
         /** 事件 Unix 时间戳（秒） */
-        @SerialName("time") val time: Long,
+        @SerialName("time") override val time: Long,
         /** 机器人 QQ 号 */
-        @SerialName("self_id") val selfId: Long,
+        @SerialName("self_id") override val selfId: Long,
         /** 数据字段 */
         @SerialName("data") val data: IncomingMessage
     ) : Event()
@@ -59,16 +132,16 @@ sealed class Event {
     /** 消息撤回事件 */
     @Serializable
     @SerialName("message_recall")
-    class MessageRecall(
+    data class MessageRecall(
         /** 事件 Unix 时间戳（秒） */
-        @SerialName("time") val time: Long,
+        @SerialName("time") override val time: Long,
         /** 机器人 QQ 号 */
-        @SerialName("self_id") val selfId: Long,
+        @SerialName("self_id") override val selfId: Long,
         /** 数据字段 */
         @SerialName("data") val data: Data
     ) : Event() {
         @Serializable
-        class Data(
+        data class Data(
             /** 消息场景 */
             @SerialName("message_scene") val messageScene: String,
             /** 好友 QQ 号或群号 */
@@ -84,19 +157,41 @@ sealed class Event {
         )
     }
 
-    /** 好友请求事件 */
+    /** 会话置顶变更事件 */
     @Serializable
-    @SerialName("friend_request")
-    class FriendRequest(
+    @SerialName("peer_pin_change")
+    data class PeerPinChange(
         /** 事件 Unix 时间戳（秒） */
-        @SerialName("time") val time: Long,
+        @SerialName("time") override val time: Long,
         /** 机器人 QQ 号 */
-        @SerialName("self_id") val selfId: Long,
+        @SerialName("self_id") override val selfId: Long,
         /** 数据字段 */
         @SerialName("data") val data: Data
     ) : Event() {
         @Serializable
-        class Data(
+        data class Data(
+            /** 发生改变的会话的消息场景 */
+            @SerialName("message_scene") val messageScene: String,
+            /** 发生改变的好友 QQ 号或群号 */
+            @SerialName("peer_id") val peerId: Long,
+            /** 是否被置顶, `false` 表示取消置顶 */
+            @SerialName("is_pinned") val isPinned: Boolean,
+        )
+    }
+
+    /** 好友请求事件 */
+    @Serializable
+    @SerialName("friend_request")
+    data class FriendRequest(
+        /** 事件 Unix 时间戳（秒） */
+        @SerialName("time") override val time: Long,
+        /** 机器人 QQ 号 */
+        @SerialName("self_id") override val selfId: Long,
+        /** 数据字段 */
+        @SerialName("data") val data: Data
+    ) : Event() {
+        @Serializable
+        data class Data(
             /** 申请好友的用户 QQ 号 */
             @SerialName("initiator_id") val initiatorId: Long,
             /** 用户 UID */
@@ -111,16 +206,16 @@ sealed class Event {
     /** 入群请求事件 */
     @Serializable
     @SerialName("group_join_request")
-    class GroupJoinRequest(
+    data class GroupJoinRequest(
         /** 事件 Unix 时间戳（秒） */
-        @SerialName("time") val time: Long,
+        @SerialName("time") override val time: Long,
         /** 机器人 QQ 号 */
-        @SerialName("self_id") val selfId: Long,
+        @SerialName("self_id") override val selfId: Long,
         /** 数据字段 */
         @SerialName("data") val data: Data
     ) : Event() {
         @Serializable
-        class Data(
+        data class Data(
             /** 群号 */
             @SerialName("group_id") val groupId: Long,
             /** 请求对应的通知序列号 */
@@ -137,16 +232,16 @@ sealed class Event {
     /** 群成员邀请他人入群请求事件 */
     @Serializable
     @SerialName("group_invited_join_request")
-    class GroupInvitedJoinRequest(
+    data class GroupInvitedJoinRequest(
         /** 事件 Unix 时间戳（秒） */
-        @SerialName("time") val time: Long,
+        @SerialName("time") override val time: Long,
         /** 机器人 QQ 号 */
-        @SerialName("self_id") val selfId: Long,
+        @SerialName("self_id") override val selfId: Long,
         /** 数据字段 */
         @SerialName("data") val data: Data
     ) : Event() {
         @Serializable
-        class Data(
+        data class Data(
             /** 群号 */
             @SerialName("group_id") val groupId: Long,
             /** 请求对应的通知序列号 */
@@ -161,16 +256,16 @@ sealed class Event {
     /** 他人邀请自身入群事件 */
     @Serializable
     @SerialName("group_invitation")
-    class GroupInvitation(
+    data class GroupInvitation(
         /** 事件 Unix 时间戳（秒） */
-        @SerialName("time") val time: Long,
+        @SerialName("time") override val time: Long,
         /** 机器人 QQ 号 */
-        @SerialName("self_id") val selfId: Long,
+        @SerialName("self_id") override val selfId: Long,
         /** 数据字段 */
         @SerialName("data") val data: Data
     ) : Event() {
         @Serializable
-        class Data(
+        data class Data(
             /** 群号 */
             @SerialName("group_id") val groupId: Long,
             /** 邀请序列号 */
@@ -183,16 +278,16 @@ sealed class Event {
     /** 好友戳一戳事件 */
     @Serializable
     @SerialName("friend_nudge")
-    class FriendNudge(
+    data class FriendNudge(
         /** 事件 Unix 时间戳（秒） */
-        @SerialName("time") val time: Long,
+        @SerialName("time") override val time: Long,
         /** 机器人 QQ 号 */
-        @SerialName("self_id") val selfId: Long,
+        @SerialName("self_id") override val selfId: Long,
         /** 数据字段 */
         @SerialName("data") val data: Data
     ) : Event() {
         @Serializable
-        class Data(
+        data class Data(
             /** 好友 QQ 号 */
             @SerialName("user_id") val userId: Long,
             /** 是否是自己发送的戳一戳 */
@@ -211,16 +306,16 @@ sealed class Event {
     /** 好友文件上传事件 */
     @Serializable
     @SerialName("friend_file_upload")
-    class FriendFileUpload(
+    data class FriendFileUpload(
         /** 事件 Unix 时间戳（秒） */
-        @SerialName("time") val time: Long,
+        @SerialName("time") override val time: Long,
         /** 机器人 QQ 号 */
-        @SerialName("self_id") val selfId: Long,
+        @SerialName("self_id") override val selfId: Long,
         /** 数据字段 */
         @SerialName("data") val data: Data
     ) : Event() {
         @Serializable
-        class Data(
+        data class Data(
             /** 好友 QQ 号 */
             @SerialName("user_id") val userId: Long,
             /** 文件 ID */
@@ -239,16 +334,16 @@ sealed class Event {
     /** 群管理员变更事件 */
     @Serializable
     @SerialName("group_admin_change")
-    class GroupAdminChange(
+    data class GroupAdminChange(
         /** 事件 Unix 时间戳（秒） */
-        @SerialName("time") val time: Long,
+        @SerialName("time") override val time: Long,
         /** 机器人 QQ 号 */
-        @SerialName("self_id") val selfId: Long,
+        @SerialName("self_id") override val selfId: Long,
         /** 数据字段 */
         @SerialName("data") val data: Data
     ) : Event() {
         @Serializable
-        class Data(
+        data class Data(
             /** 群号 */
             @SerialName("group_id") val groupId: Long,
             /** 发生变更的用户 QQ 号 */
@@ -263,16 +358,16 @@ sealed class Event {
     /** 群精华消息变更事件 */
     @Serializable
     @SerialName("group_essence_message_change")
-    class GroupEssenceMessageChange(
+    data class GroupEssenceMessageChange(
         /** 事件 Unix 时间戳（秒） */
-        @SerialName("time") val time: Long,
+        @SerialName("time") override val time: Long,
         /** 机器人 QQ 号 */
-        @SerialName("self_id") val selfId: Long,
+        @SerialName("self_id") override val selfId: Long,
         /** 数据字段 */
         @SerialName("data") val data: Data
     ) : Event() {
         @Serializable
-        class Data(
+        data class Data(
             /** 群号 */
             @SerialName("group_id") val groupId: Long,
             /** 发生变更的消息序列号 */
@@ -287,16 +382,16 @@ sealed class Event {
     /** 群成员增加事件 */
     @Serializable
     @SerialName("group_member_increase")
-    class GroupMemberIncrease(
+    data class GroupMemberIncrease(
         /** 事件 Unix 时间戳（秒） */
-        @SerialName("time") val time: Long,
+        @SerialName("time") override val time: Long,
         /** 机器人 QQ 号 */
-        @SerialName("self_id") val selfId: Long,
+        @SerialName("self_id") override val selfId: Long,
         /** 数据字段 */
         @SerialName("data") val data: Data
     ) : Event() {
         @Serializable
-        class Data(
+        data class Data(
             /** 群号 */
             @SerialName("group_id") val groupId: Long,
             /** 发生变更的用户 QQ 号 */
@@ -311,16 +406,16 @@ sealed class Event {
     /** 群成员减少事件 */
     @Serializable
     @SerialName("group_member_decrease")
-    class GroupMemberDecrease(
+    data class GroupMemberDecrease(
         /** 事件 Unix 时间戳（秒） */
-        @SerialName("time") val time: Long,
+        @SerialName("time") override val time: Long,
         /** 机器人 QQ 号 */
-        @SerialName("self_id") val selfId: Long,
+        @SerialName("self_id") override val selfId: Long,
         /** 数据字段 */
         @SerialName("data") val data: Data
     ) : Event() {
         @Serializable
-        class Data(
+        data class Data(
             /** 群号 */
             @SerialName("group_id") val groupId: Long,
             /** 发生变更的用户 QQ 号 */
@@ -333,16 +428,16 @@ sealed class Event {
     /** 群名称变更事件 */
     @Serializable
     @SerialName("group_name_change")
-    class GroupNameChange(
+    data class GroupNameChange(
         /** 事件 Unix 时间戳（秒） */
-        @SerialName("time") val time: Long,
+        @SerialName("time") override val time: Long,
         /** 机器人 QQ 号 */
-        @SerialName("self_id") val selfId: Long,
+        @SerialName("self_id") override val selfId: Long,
         /** 数据字段 */
         @SerialName("data") val data: Data
     ) : Event() {
         @Serializable
-        class Data(
+        data class Data(
             /** 群号 */
             @SerialName("group_id") val groupId: Long,
             /** 新的群名称 */
@@ -355,16 +450,16 @@ sealed class Event {
     /** 群消息表情回应事件 */
     @Serializable
     @SerialName("group_message_reaction")
-    class GroupMessageReaction(
+    data class GroupMessageReaction(
         /** 事件 Unix 时间戳（秒） */
-        @SerialName("time") val time: Long,
+        @SerialName("time") override val time: Long,
         /** 机器人 QQ 号 */
-        @SerialName("self_id") val selfId: Long,
+        @SerialName("self_id") override val selfId: Long,
         /** 数据字段 */
         @SerialName("data") val data: Data
     ) : Event() {
         @Serializable
-        class Data(
+        data class Data(
             /** 群号 */
             @SerialName("group_id") val groupId: Long,
             /** 发送回应者 QQ 号 */
@@ -381,16 +476,16 @@ sealed class Event {
     /** 群禁言事件 */
     @Serializable
     @SerialName("group_mute")
-    class GroupMute(
+    data class GroupMute(
         /** 事件 Unix 时间戳（秒） */
-        @SerialName("time") val time: Long,
+        @SerialName("time") override val time: Long,
         /** 机器人 QQ 号 */
-        @SerialName("self_id") val selfId: Long,
+        @SerialName("self_id") override val selfId: Long,
         /** 数据字段 */
         @SerialName("data") val data: Data
     ) : Event() {
         @Serializable
-        class Data(
+        data class Data(
             /** 群号 */
             @SerialName("group_id") val groupId: Long,
             /** 发生变更的用户 QQ 号 */
@@ -405,16 +500,16 @@ sealed class Event {
     /** 群全体禁言事件 */
     @Serializable
     @SerialName("group_whole_mute")
-    class GroupWholeMute(
+    data class GroupWholeMute(
         /** 事件 Unix 时间戳（秒） */
-        @SerialName("time") val time: Long,
+        @SerialName("time") override val time: Long,
         /** 机器人 QQ 号 */
-        @SerialName("self_id") val selfId: Long,
+        @SerialName("self_id") override val selfId: Long,
         /** 数据字段 */
         @SerialName("data") val data: Data
     ) : Event() {
         @Serializable
-        class Data(
+        data class Data(
             /** 群号 */
             @SerialName("group_id") val groupId: Long,
             /** 操作者 QQ 号 */
@@ -427,16 +522,16 @@ sealed class Event {
     /** 群戳一戳事件 */
     @Serializable
     @SerialName("group_nudge")
-    class GroupNudge(
+    data class GroupNudge(
         /** 事件 Unix 时间戳（秒） */
-        @SerialName("time") val time: Long,
+        @SerialName("time") override val time: Long,
         /** 机器人 QQ 号 */
-        @SerialName("self_id") val selfId: Long,
+        @SerialName("self_id") override val selfId: Long,
         /** 数据字段 */
         @SerialName("data") val data: Data
     ) : Event() {
         @Serializable
-        class Data(
+        data class Data(
             /** 群号 */
             @SerialName("group_id") val groupId: Long,
             /** 发送者 QQ 号 */
@@ -455,16 +550,16 @@ sealed class Event {
     /** 群文件上传事件 */
     @Serializable
     @SerialName("group_file_upload")
-    class GroupFileUpload(
+    data class GroupFileUpload(
         /** 事件 Unix 时间戳（秒） */
-        @SerialName("time") val time: Long,
+        @SerialName("time") override val time: Long,
         /** 机器人 QQ 号 */
-        @SerialName("self_id") val selfId: Long,
+        @SerialName("self_id") override val selfId: Long,
         /** 数据字段 */
         @SerialName("data") val data: Data
     ) : Event() {
         @Serializable
-        class Data(
+        data class Data(
             /** 群号 */
             @SerialName("group_id") val groupId: Long,
             /** 发送者 QQ 号 */
@@ -481,7 +576,7 @@ sealed class Event {
 
 /** 好友实体 */
 @Serializable
-class FriendEntity(
+data class FriendEntity(
     /** 用户 QQ 号 */
     @SerialName("user_id") val userId: Long,
     /** 用户昵称 */
@@ -498,7 +593,7 @@ class FriendEntity(
 
 /** 好友分组实体 */
 @Serializable
-class FriendCategoryEntity(
+data class FriendCategoryEntity(
     /** 好友分组 ID */
     @SerialName("category_id") val categoryId: Int,
     /** 好友分组名称 */
@@ -507,7 +602,7 @@ class FriendCategoryEntity(
 
 /** 群实体 */
 @Serializable
-class GroupEntity(
+data class GroupEntity(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
     /** 群名称 */
@@ -520,7 +615,7 @@ class GroupEntity(
 
 /** 群成员实体 */
 @Serializable
-class GroupMemberEntity(
+data class GroupMemberEntity(
     /** 用户 QQ 号 */
     @SerialName("user_id") val userId: Long,
     /** 用户昵称 */
@@ -547,7 +642,7 @@ class GroupMemberEntity(
 
 /** 群公告实体 */
 @Serializable
-class GroupAnnouncementEntity(
+data class GroupAnnouncementEntity(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
     /** 公告 ID */
@@ -564,7 +659,7 @@ class GroupAnnouncementEntity(
 
 /** 群文件实体 */
 @Serializable
-class GroupFileEntity(
+data class GroupFileEntity(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
     /** 文件 ID */
@@ -587,7 +682,7 @@ class GroupFileEntity(
 
 /** 群文件夹实体 */
 @Serializable
-class GroupFolderEntity(
+data class GroupFolderEntity(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
     /** 文件夹 ID */
@@ -608,7 +703,7 @@ class GroupFolderEntity(
 
 /** 好友请求实体 */
 @Serializable
-class FriendRequest(
+data class FriendRequest(
     /** 请求发起时的 Unix 时间戳（秒） */
     @SerialName("time") val time: Long,
     /** 请求发起者 QQ 号 */
@@ -633,14 +728,19 @@ class FriendRequest(
 @Serializable
 @JsonClassDiscriminator("type")
 sealed class GroupNotification {
+    /** 群号 */
+    abstract val groupId: Long
+    /** 通知序列号 */
+    abstract val notificationSeq: Long
+
     /** 用户入群请求 */
     @Serializable
     @SerialName("join_request")
-    class JoinRequest(
+    data class JoinRequest(
         /** 群号 */
-        @SerialName("group_id") val groupId: Long,
+        @SerialName("group_id") override val groupId: Long,
         /** 通知序列号 */
-        @SerialName("notification_seq") val notificationSeq: Long,
+        @SerialName("notification_seq") override val notificationSeq: Long,
         /** 请求是否被过滤（发起自风险账户） */
         @SerialName("is_filtered") val isFiltered: Boolean,
         /** 发起者 QQ 号 */
@@ -656,11 +756,11 @@ sealed class GroupNotification {
     /** 群管理员变更通知 */
     @Serializable
     @SerialName("admin_change")
-    class AdminChange(
+    data class AdminChange(
         /** 群号 */
-        @SerialName("group_id") val groupId: Long,
+        @SerialName("group_id") override val groupId: Long,
         /** 通知序列号 */
-        @SerialName("notification_seq") val notificationSeq: Long,
+        @SerialName("notification_seq") override val notificationSeq: Long,
         /** 被设置/取消用户 QQ 号 */
         @SerialName("target_user_id") val targetUserId: Long,
         /** 是否被设置为管理员，`false` 表示被取消管理员 */
@@ -672,11 +772,11 @@ sealed class GroupNotification {
     /** 群成员被移除通知 */
     @Serializable
     @SerialName("kick")
-    class Kick(
+    data class Kick(
         /** 群号 */
-        @SerialName("group_id") val groupId: Long,
+        @SerialName("group_id") override val groupId: Long,
         /** 通知序列号 */
-        @SerialName("notification_seq") val notificationSeq: Long,
+        @SerialName("notification_seq") override val notificationSeq: Long,
         /** 被移除用户 QQ 号 */
         @SerialName("target_user_id") val targetUserId: Long,
         /** 移除用户的管理员 QQ 号 */
@@ -686,11 +786,11 @@ sealed class GroupNotification {
     /** 群成员退群通知 */
     @Serializable
     @SerialName("quit")
-    class Quit(
+    data class Quit(
         /** 群号 */
-        @SerialName("group_id") val groupId: Long,
+        @SerialName("group_id") override val groupId: Long,
         /** 通知序列号 */
-        @SerialName("notification_seq") val notificationSeq: Long,
+        @SerialName("notification_seq") override val notificationSeq: Long,
         /** 退群用户 QQ 号 */
         @SerialName("target_user_id") val targetUserId: Long,
     ) : GroupNotification()
@@ -698,11 +798,11 @@ sealed class GroupNotification {
     /** 群成员邀请他人入群请求 */
     @Serializable
     @SerialName("invited_join_request")
-    class InvitedJoinRequest(
+    data class InvitedJoinRequest(
         /** 群号 */
-        @SerialName("group_id") val groupId: Long,
+        @SerialName("group_id") override val groupId: Long,
         /** 通知序列号 */
-        @SerialName("notification_seq") val notificationSeq: Long,
+        @SerialName("notification_seq") override val notificationSeq: Long,
         /** 邀请者 QQ 号 */
         @SerialName("initiator_id") val initiatorId: Long,
         /** 被邀请用户 QQ 号 */
@@ -718,20 +818,32 @@ sealed class GroupNotification {
 @Serializable
 @JsonClassDiscriminator("message_scene")
 sealed class IncomingMessage {
+    /** 好友 QQ 号或群号 */
+    abstract val peerId: Long
+    /** 消息序列号 */
+    abstract val messageSeq: Long
+    /** 发送者 QQ 号 */
+    abstract val senderId: Long
+    /** 消息 Unix 时间戳（秒） */
+    abstract val time: Long
+    /** 消息段列表 */
+    abstract val segments: List<IncomingSegment>
+
     /** 好友消息 */
     @Serializable
     @SerialName("friend")
-    class Friend(
+    data class Friend(
         /** 好友 QQ 号或群号 */
-        @SerialName("peer_id") val peerId: Long,
+        @SerialName("peer_id") override val peerId: Long,
         /** 消息序列号 */
-        @SerialName("message_seq") val messageSeq: Long,
+        @SerialName("message_seq") override val messageSeq: Long,
         /** 发送者 QQ 号 */
-        @SerialName("sender_id") val senderId: Long,
+        @SerialName("sender_id") override val senderId: Long,
         /** 消息 Unix 时间戳（秒） */
-        @SerialName("time") val time: Long,
+        @SerialName("time") override val time: Long,
         /** 消息段列表 */
-        @SerialName("segments") val segments: List<IncomingSegment>,
+        @Serializable(with = TransformUnknownSegmentListSerializer::class)
+        @SerialName("segments") override val segments: List<IncomingSegment>,
         /** 好友信息 */
         @SerialName("friend") val friend: FriendEntity,
     ) : IncomingMessage()
@@ -739,17 +851,18 @@ sealed class IncomingMessage {
     /** 群消息 */
     @Serializable
     @SerialName("group")
-    class Group(
+    data class Group(
         /** 好友 QQ 号或群号 */
-        @SerialName("peer_id") val peerId: Long,
+        @SerialName("peer_id") override val peerId: Long,
         /** 消息序列号 */
-        @SerialName("message_seq") val messageSeq: Long,
+        @SerialName("message_seq") override val messageSeq: Long,
         /** 发送者 QQ 号 */
-        @SerialName("sender_id") val senderId: Long,
+        @SerialName("sender_id") override val senderId: Long,
         /** 消息 Unix 时间戳（秒） */
-        @SerialName("time") val time: Long,
+        @SerialName("time") override val time: Long,
         /** 消息段列表 */
-        @SerialName("segments") val segments: List<IncomingSegment>,
+        @Serializable(with = TransformUnknownSegmentListSerializer::class)
+        @SerialName("segments") override val segments: List<IncomingSegment>,
         /** 群信息 */
         @SerialName("group") val group: GroupEntity,
         /** 群成员信息 */
@@ -759,17 +872,18 @@ sealed class IncomingMessage {
     /** 临时会话消息 */
     @Serializable
     @SerialName("temp")
-    class Temp(
+    data class Temp(
         /** 好友 QQ 号或群号 */
-        @SerialName("peer_id") val peerId: Long,
+        @SerialName("peer_id") override val peerId: Long,
         /** 消息序列号 */
-        @SerialName("message_seq") val messageSeq: Long,
+        @SerialName("message_seq") override val messageSeq: Long,
         /** 发送者 QQ 号 */
-        @SerialName("sender_id") val senderId: Long,
+        @SerialName("sender_id") override val senderId: Long,
         /** 消息 Unix 时间戳（秒） */
-        @SerialName("time") val time: Long,
+        @SerialName("time") override val time: Long,
         /** 消息段列表 */
-        @SerialName("segments") val segments: List<IncomingSegment>,
+        @Serializable(with = TransformUnknownSegmentListSerializer::class)
+        @SerialName("segments") override val segments: List<IncomingSegment>,
         /** 临时会话发送者的所在的群信息 */
         @SerialName("group") val group: GroupEntity? = null,
     ) : IncomingMessage()
@@ -777,7 +891,9 @@ sealed class IncomingMessage {
 
 /** 接收转发消息 */
 @Serializable
-class IncomingForwardedMessage(
+data class IncomingForwardedMessage(
+    /** 消息序列号 */
+    @SerialName("message_seq") val messageSeq: Long,
     /** 发送者名称 */
     @SerialName("sender_name") val senderName: String,
     /** 发送者头像 URL */
@@ -785,12 +901,13 @@ class IncomingForwardedMessage(
     /** 消息 Unix 时间戳（秒） */
     @SerialName("time") val time: Long,
     /** 消息段列表 */
+    @Serializable(with = TransformUnknownSegmentListSerializer::class)
     @SerialName("segments") val segments: List<IncomingSegment>,
 )
 
 /** 群精华消息 */
 @Serializable
-class GroupEssenceMessage(
+data class GroupEssenceMessage(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
     /** 消息序列号 */
@@ -808,6 +925,7 @@ class GroupEssenceMessage(
     /** 消息被设置精华时的 Unix 时间戳（秒） */
     @SerialName("operation_time") val operationTime: Long,
     /** 消息段列表 */
+    @Serializable(with = TransformUnknownSegmentListSerializer::class)
     @SerialName("segments") val segments: List<IncomingSegment>,
 )
 
@@ -818,12 +936,12 @@ sealed class IncomingSegment {
     /** 文本消息段 */
     @Serializable
     @SerialName("text")
-    class Text(
+    data class Text(
         /** 数据字段 */
         @SerialName("data") val data: Data
     ) : IncomingSegment() {
         @Serializable
-        class Data(
+        data class Data(
             /** 文本内容 */
             @SerialName("text") val text: String,
         )
@@ -832,38 +950,39 @@ sealed class IncomingSegment {
     /** 提及消息段 */
     @Serializable
     @SerialName("mention")
-    class Mention(
+    data class Mention(
         /** 数据字段 */
         @SerialName("data") val data: Data
     ) : IncomingSegment() {
         @Serializable
-        class Data(
+        data class Data(
             /** 提及的 QQ 号 */
             @SerialName("user_id") val userId: Long,
+            /** 去掉 `@` 前缀的提及的名称 */
+            @SerialName("name") val name: String,
         )
     }
 
     /** 提及全体消息段 */
     @Serializable
     @SerialName("mention_all")
-    class MentionAll(
+    data class MentionAll(
         /** 数据字段 */
         @SerialName("data") val data: Data
     ) : IncomingSegment() {
         @Serializable
-        class Data(
-        )
+        class Data
     }
 
     /** 表情消息段 */
     @Serializable
     @SerialName("face")
-    class Face(
+    data class Face(
         /** 数据字段 */
         @SerialName("data") val data: Data
     ) : IncomingSegment() {
         @Serializable
-        class Data(
+        data class Data(
             /** 表情 ID */
             @SerialName("face_id") val faceId: String,
             /** 是否为超级表情 */
@@ -874,26 +993,35 @@ sealed class IncomingSegment {
     /** 回复消息段 */
     @Serializable
     @SerialName("reply")
-    class Reply(
+    data class Reply(
         /** 数据字段 */
         @SerialName("data") val data: Data
     ) : IncomingSegment() {
         @Serializable
-        class Data(
+        data class Data(
             /** 被引用的消息序列号 */
             @SerialName("message_seq") val messageSeq: Long,
+            /** 被引用的消息发送者 QQ 号 */
+            @SerialName("sender_id") val senderId: Long,
+            /** 被引用的消息发送者名称，仅在合并转发中能够获取 */
+            @SerialName("sender_name") val senderName: String? = null,
+            /** 被引用的消息的 Unix 时间戳（秒） */
+            @SerialName("time") val time: Long,
+            /** 被引用的消息内容 */
+            @Serializable(with = TransformUnknownSegmentListSerializer::class)
+            @SerialName("segments") val segments: List<IncomingSegment>,
         )
     }
 
     /** 图片消息段 */
     @Serializable
     @SerialName("image")
-    class Image(
+    data class Image(
         /** 数据字段 */
         @SerialName("data") val data: Data
     ) : IncomingSegment() {
         @Serializable
-        class Data(
+        data class Data(
             /** 资源 ID */
             @SerialName("resource_id") val resourceId: String,
             /** 临时 URL */
@@ -912,12 +1040,12 @@ sealed class IncomingSegment {
     /** 语音消息段 */
     @Serializable
     @SerialName("record")
-    class Record(
+    data class Record(
         /** 数据字段 */
         @SerialName("data") val data: Data
     ) : IncomingSegment() {
         @Serializable
-        class Data(
+        data class Data(
             /** 资源 ID */
             @SerialName("resource_id") val resourceId: String,
             /** 临时 URL */
@@ -930,12 +1058,12 @@ sealed class IncomingSegment {
     /** 视频消息段 */
     @Serializable
     @SerialName("video")
-    class Video(
+    data class Video(
         /** 数据字段 */
         @SerialName("data") val data: Data
     ) : IncomingSegment() {
         @Serializable
-        class Data(
+        data class Data(
             /** 资源 ID */
             @SerialName("resource_id") val resourceId: String,
             /** 临时 URL */
@@ -952,12 +1080,12 @@ sealed class IncomingSegment {
     /** 文件消息段 */
     @Serializable
     @SerialName("file")
-    class File(
+    data class File(
         /** 数据字段 */
         @SerialName("data") val data: Data
     ) : IncomingSegment() {
         @Serializable
-        class Data(
+        data class Data(
             /** 文件 ID */
             @SerialName("file_id") val fileId: String,
             /** 文件名称 */
@@ -972,12 +1100,12 @@ sealed class IncomingSegment {
     /** 合并转发消息段 */
     @Serializable
     @SerialName("forward")
-    class Forward(
+    data class Forward(
         /** 数据字段 */
         @SerialName("data") val data: Data
     ) : IncomingSegment() {
         @Serializable
-        class Data(
+        data class Data(
             /** 合并转发 ID */
             @SerialName("forward_id") val forwardId: String,
             /** 合并转发标题 */
@@ -992,12 +1120,12 @@ sealed class IncomingSegment {
     /** 市场表情消息段 */
     @Serializable
     @SerialName("market_face")
-    class MarketFace(
+    data class MarketFace(
         /** 数据字段 */
         @SerialName("data") val data: Data
     ) : IncomingSegment() {
         @Serializable
-        class Data(
+        data class Data(
             /** 市场表情包 ID */
             @SerialName("emoji_package_id") val emojiPackageId: Int,
             /** 市场表情 ID */
@@ -1014,12 +1142,12 @@ sealed class IncomingSegment {
     /** 小程序消息段 */
     @Serializable
     @SerialName("light_app")
-    class LightApp(
+    data class LightApp(
         /** 数据字段 */
         @SerialName("data") val data: Data
     ) : IncomingSegment() {
         @Serializable
-        class Data(
+        data class Data(
             /** 小程序名称 */
             @SerialName("app_name") val appName: String,
             /** 小程序 JSON 数据 */
@@ -1030,12 +1158,12 @@ sealed class IncomingSegment {
     /** XML 消息段 */
     @Serializable
     @SerialName("xml")
-    class Xml(
+    data class Xml(
         /** 数据字段 */
         @SerialName("data") val data: Data
     ) : IncomingSegment() {
         @Serializable
-        class Data(
+        data class Data(
             /** 服务 ID */
             @SerialName("service_id") val serviceId: Int,
             /** XML 数据 */
@@ -1046,12 +1174,13 @@ sealed class IncomingSegment {
 
 /** 发送转发消息 */
 @Serializable
-class OutgoingForwardedMessage(
+data class OutgoingForwardedMessage(
     /** 发送者 QQ 号 */
     @SerialName("user_id") val userId: Long,
     /** 发送者名称 */
     @SerialName("sender_name") val senderName: String,
     /** 消息段列表 */
+    @Serializable(with = DropBadElementListSerializer::class)
     @SerialName("segments") val segments: List<OutgoingSegment>,
 )
 
@@ -1062,12 +1191,12 @@ sealed class OutgoingSegment {
     /** 文本消息段 */
     @Serializable
     @SerialName("text")
-    class Text(
+    data class Text(
         /** 数据字段 */
         @SerialName("data") val data: Data
     ) : OutgoingSegment() {
         @Serializable
-        class Data(
+        data class Data(
             /** 文本内容 */
             @SerialName("text") val text: String,
         )
@@ -1076,12 +1205,12 @@ sealed class OutgoingSegment {
     /** 提及消息段 */
     @Serializable
     @SerialName("mention")
-    class Mention(
+    data class Mention(
         /** 数据字段 */
         @SerialName("data") val data: Data
     ) : OutgoingSegment() {
         @Serializable
-        class Data(
+        data class Data(
             /** 提及的 QQ 号 */
             @SerialName("user_id") val userId: Long,
         )
@@ -1090,24 +1219,23 @@ sealed class OutgoingSegment {
     /** 提及全体消息段 */
     @Serializable
     @SerialName("mention_all")
-    class MentionAll(
+    data class MentionAll(
         /** 数据字段 */
         @SerialName("data") val data: Data
     ) : OutgoingSegment() {
         @Serializable
-        class Data(
-        )
+        class Data
     }
 
     /** 表情消息段 */
     @Serializable
     @SerialName("face")
-    class Face(
+    data class Face(
         /** 数据字段 */
         @SerialName("data") val data: Data
     ) : OutgoingSegment() {
         @Serializable
-        class Data(
+        data class Data(
             /** 表情 ID */
             @SerialName("face_id") val faceId: String,
             /** 是否为超级表情 */
@@ -1118,12 +1246,12 @@ sealed class OutgoingSegment {
     /** 回复消息段 */
     @Serializable
     @SerialName("reply")
-    class Reply(
+    data class Reply(
         /** 数据字段 */
         @SerialName("data") val data: Data
     ) : OutgoingSegment() {
         @Serializable
-        class Data(
+        data class Data(
             /** 被引用的消息序列号 */
             @SerialName("message_seq") val messageSeq: Long,
         )
@@ -1132,12 +1260,12 @@ sealed class OutgoingSegment {
     /** 图片消息段 */
     @Serializable
     @SerialName("image")
-    class Image(
+    data class Image(
         /** 数据字段 */
         @SerialName("data") val data: Data
     ) : OutgoingSegment() {
         @Serializable
-        class Data(
+        data class Data(
             /** 文件 URI，支持 `file://` `http(s)://` `base64://` 三种格式 */
             @SerialName("uri") val uri: String,
             /** 图片类型 */
@@ -1150,12 +1278,12 @@ sealed class OutgoingSegment {
     /** 语音消息段 */
     @Serializable
     @SerialName("record")
-    class Record(
+    data class Record(
         /** 数据字段 */
         @SerialName("data") val data: Data
     ) : OutgoingSegment() {
         @Serializable
-        class Data(
+        data class Data(
             /** 文件 URI，支持 `file://` `http(s)://` `base64://` 三种格式 */
             @SerialName("uri") val uri: String,
         )
@@ -1164,12 +1292,12 @@ sealed class OutgoingSegment {
     /** 视频消息段 */
     @Serializable
     @SerialName("video")
-    class Video(
+    data class Video(
         /** 数据字段 */
         @SerialName("data") val data: Data
     ) : OutgoingSegment() {
         @Serializable
-        class Data(
+        data class Data(
             /** 文件 URI，支持 `file://` `http(s)://` `base64://` 三种格式 */
             @SerialName("uri") val uri: String,
             /** 封面图片 URI */
@@ -1180,14 +1308,36 @@ sealed class OutgoingSegment {
     /** 合并转发消息段 */
     @Serializable
     @SerialName("forward")
-    class Forward(
+    data class Forward(
         /** 数据字段 */
         @SerialName("data") val data: Data
     ) : OutgoingSegment() {
         @Serializable
-        class Data(
-            /** 合并转发消息段 */
+        data class Data(
+            /** 合并转发消息内容 */
             @SerialName("messages") val messages: List<OutgoingForwardedMessage>,
+            /** 合并转发标题 */
+            @SerialName("title") val title: String? = null,
+            /** 合并转发预览文本，若提供，至少 1 条，至多 4 条 */
+            @SerialName("preview") val preview: List<String>? = null,
+            /** 合并转发摘要 */
+            @SerialName("summary") val summary: String? = null,
+            /** 合并转发的预览外显文本，仅对移动端 QQ 有效 */
+            @SerialName("prompt") val prompt: String? = null,
+        )
+    }
+
+    /** 小程序消息段 */
+    @Serializable
+    @SerialName("light_app")
+    data class LightApp(
+        /** 数据字段 */
+        @SerialName("data") val data: Data
+    ) : OutgoingSegment() {
+        @Serializable
+        data class Data(
+            /** 小程序 JSON 数据 */
+            @SerialName("json_payload") val jsonPayload: String,
         )
     }
 }
@@ -1197,7 +1347,7 @@ sealed class OutgoingSegment {
 // ####################################
 
 @Serializable
-class ApiGeneralResponse(
+data class ApiGeneralResponse(
     @SerialName("status") val status: String,
     @SerialName("retcode") val retcode: Int,
     @SerialName("data") val data: JsonElement? = null,
@@ -1212,7 +1362,7 @@ class ApiEmptyStruct
 typealias GetLoginInfoInput = ApiEmptyStruct
 
 @Serializable
-class GetLoginInfoOutput(
+data class GetLoginInfoOutput(
     /** 登录 QQ 号 */
     @SerialName("uin") val uin: Long,
     /** 登录昵称 */
@@ -1222,7 +1372,7 @@ class GetLoginInfoOutput(
 typealias GetImplInfoInput = ApiEmptyStruct
 
 @Serializable
-class GetImplInfoOutput(
+data class GetImplInfoOutput(
     /** 协议端名称 */
     @SerialName("impl_name") val implName: String,
     /** 协议端版本 */
@@ -1231,18 +1381,18 @@ class GetImplInfoOutput(
     @SerialName("qq_protocol_version") val qqProtocolVersion: String,
     /** 协议端使用的 QQ 协议平台 */
     @SerialName("qq_protocol_type") val qqProtocolType: String,
-    /** 协议端实现的 Milky 协议版本，目前为 "1.1" */
+    /** 协议端实现的 Milky 协议版本，目前为 "1.2" */
     @SerialName("milky_version") val milkyVersion: String,
 )
 
 @Serializable
-class GetUserProfileInput(
+data class GetUserProfileInput(
     /** 用户 QQ 号 */
     @SerialName("user_id") val userId: Long,
 )
 
 @Serializable
-class GetUserProfileOutput(
+data class GetUserProfileOutput(
     /** 昵称 */
     @SerialName("nickname") val nickname: String,
     /** QID */
@@ -1266,19 +1416,19 @@ class GetUserProfileOutput(
 )
 
 @Serializable
-class GetFriendListInput(
+data class GetFriendListInput(
     /** 是否强制不使用缓存 */
     @SerialName("no_cache") @LiteralDefault("false") val noCache: Boolean = false,
 )
 
 @Serializable
-class GetFriendListOutput(
+data class GetFriendListOutput(
     /** 好友列表 */
     @SerialName("friends") val friends: List<FriendEntity>,
 )
 
 @Serializable
-class GetFriendInfoInput(
+data class GetFriendInfoInput(
     /** 好友 QQ 号 */
     @SerialName("user_id") val userId: Long,
     /** 是否强制不使用缓存 */
@@ -1286,25 +1436,25 @@ class GetFriendInfoInput(
 )
 
 @Serializable
-class GetFriendInfoOutput(
+data class GetFriendInfoOutput(
     /** 好友信息 */
     @SerialName("friend") val friend: FriendEntity,
 )
 
 @Serializable
-class GetGroupListInput(
+data class GetGroupListInput(
     /** 是否强制不使用缓存 */
     @SerialName("no_cache") @LiteralDefault("false") val noCache: Boolean = false,
 )
 
 @Serializable
-class GetGroupListOutput(
+data class GetGroupListOutput(
     /** 群列表 */
     @SerialName("groups") val groups: List<GroupEntity>,
 )
 
 @Serializable
-class GetGroupInfoInput(
+data class GetGroupInfoInput(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
     /** 是否强制不使用缓存 */
@@ -1312,13 +1462,13 @@ class GetGroupInfoInput(
 )
 
 @Serializable
-class GetGroupInfoOutput(
+data class GetGroupInfoOutput(
     /** 群信息 */
     @SerialName("group") val group: GroupEntity,
 )
 
 @Serializable
-class GetGroupMemberListInput(
+data class GetGroupMemberListInput(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
     /** 是否强制不使用缓存 */
@@ -1326,13 +1476,13 @@ class GetGroupMemberListInput(
 )
 
 @Serializable
-class GetGroupMemberListOutput(
+data class GetGroupMemberListOutput(
     /** 群成员列表 */
     @SerialName("members") val members: List<GroupMemberEntity>,
 )
 
 @Serializable
-class GetGroupMemberInfoInput(
+data class GetGroupMemberInfoInput(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
     /** 群成员 QQ 号 */
@@ -1342,13 +1492,35 @@ class GetGroupMemberInfoInput(
 )
 
 @Serializable
-class GetGroupMemberInfoOutput(
+data class GetGroupMemberInfoOutput(
     /** 群成员信息 */
     @SerialName("member") val member: GroupMemberEntity,
 )
 
+typealias GetPeerPinsInput = ApiEmptyStruct
+
 @Serializable
-class SetAvatarInput(
+data class GetPeerPinsOutput(
+    /** 置顶的好友列表 */
+    @SerialName("friends") val friends: List<FriendEntity>,
+    /** 置顶的群列表 */
+    @SerialName("groups") val groups: List<GroupEntity>,
+)
+
+@Serializable
+data class SetPeerPinInput(
+    /** 要设置的会话的消息场景 */
+    @SerialName("message_scene") val messageScene: String,
+    /** 要设置的好友 QQ 号或群号 */
+    @SerialName("peer_id") val peerId: Long,
+    /** 是否置顶, `false` 表示取消置顶 */
+    @SerialName("is_pinned") @LiteralDefault("true") val isPinned: Boolean = true,
+)
+
+typealias SetPeerPinOutput = ApiEmptyStruct
+
+@Serializable
+data class SetAvatarInput(
     /** 头像文件 URI，支持 `file://` `http(s)://` `base64://` 三种格式 */
     @SerialName("uri") val uri: String,
 )
@@ -1356,7 +1528,7 @@ class SetAvatarInput(
 typealias SetAvatarOutput = ApiEmptyStruct
 
 @Serializable
-class SetNicknameInput(
+data class SetNicknameInput(
     /** 新昵称 */
     @SerialName("new_nickname") val newNickname: String,
 )
@@ -1364,7 +1536,7 @@ class SetNicknameInput(
 typealias SetNicknameOutput = ApiEmptyStruct
 
 @Serializable
-class SetBioInput(
+data class SetBioInput(
     /** 新个性签名 */
     @SerialName("new_bio") val newBio: String,
 )
@@ -1374,19 +1546,19 @@ typealias SetBioOutput = ApiEmptyStruct
 typealias GetCustomFaceUrlListInput = ApiEmptyStruct
 
 @Serializable
-class GetCustomFaceUrlListOutput(
+data class GetCustomFaceUrlListOutput(
     /** 自定义表情 URL 列表 */
     @SerialName("urls") val urls: List<String>,
 )
 
 @Serializable
-class GetCookiesInput(
+data class GetCookiesInput(
     /** 需要获取 Cookies 的域名 */
     @SerialName("domain") val domain: String,
 )
 
 @Serializable
-class GetCookiesOutput(
+data class GetCookiesOutput(
     /** 域名对应的 Cookies 字符串 */
     @SerialName("cookies") val cookies: String,
 )
@@ -1394,7 +1566,7 @@ class GetCookiesOutput(
 typealias GetCsrfTokenInput = ApiEmptyStruct
 
 @Serializable
-class GetCsrfTokenOutput(
+data class GetCsrfTokenOutput(
     /** CSRF Token */
     @SerialName("csrf_token") val csrfToken: String,
 )
@@ -1402,15 +1574,16 @@ class GetCsrfTokenOutput(
 // ---- 消息 API ----
 
 @Serializable
-class SendPrivateMessageInput(
+data class SendPrivateMessageInput(
     /** 好友 QQ 号 */
     @SerialName("user_id") val userId: Long,
     /** 消息内容 */
+    @Serializable(with = DropBadElementListSerializer::class)
     @SerialName("message") val message: List<OutgoingSegment>,
 )
 
 @Serializable
-class SendPrivateMessageOutput(
+data class SendPrivateMessageOutput(
     /** 消息序列号 */
     @SerialName("message_seq") val messageSeq: Long,
     /** 消息发送时间 */
@@ -1418,15 +1591,16 @@ class SendPrivateMessageOutput(
 )
 
 @Serializable
-class SendGroupMessageInput(
+data class SendGroupMessageInput(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
     /** 消息内容 */
+    @Serializable(with = DropBadElementListSerializer::class)
     @SerialName("message") val message: List<OutgoingSegment>,
 )
 
 @Serializable
-class SendGroupMessageOutput(
+data class SendGroupMessageOutput(
     /** 消息序列号 */
     @SerialName("message_seq") val messageSeq: Long,
     /** 消息发送时间 */
@@ -1434,7 +1608,7 @@ class SendGroupMessageOutput(
 )
 
 @Serializable
-class RecallPrivateMessageInput(
+data class RecallPrivateMessageInput(
     /** 好友 QQ 号 */
     @SerialName("user_id") val userId: Long,
     /** 消息序列号 */
@@ -1444,7 +1618,7 @@ class RecallPrivateMessageInput(
 typealias RecallPrivateMessageOutput = ApiEmptyStruct
 
 @Serializable
-class RecallGroupMessageInput(
+data class RecallGroupMessageInput(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
     /** 消息序列号 */
@@ -1454,7 +1628,7 @@ class RecallGroupMessageInput(
 typealias RecallGroupMessageOutput = ApiEmptyStruct
 
 @Serializable
-class GetMessageInput(
+data class GetMessageInput(
     /** 消息场景 */
     @SerialName("message_scene") val messageScene: String,
     /** 好友 QQ 号或群号 */
@@ -1464,13 +1638,13 @@ class GetMessageInput(
 )
 
 @Serializable
-class GetMessageOutput(
+data class GetMessageOutput(
     /** 消息内容 */
     @SerialName("message") val message: IncomingMessage,
 )
 
 @Serializable
-class GetHistoryMessagesInput(
+data class GetHistoryMessagesInput(
     /** 消息场景 */
     @SerialName("message_scene") val messageScene: String,
     /** 好友 QQ 号或群号 */
@@ -1482,39 +1656,40 @@ class GetHistoryMessagesInput(
 )
 
 @Serializable
-class GetHistoryMessagesOutput(
+data class GetHistoryMessagesOutput(
     /** 获取到的消息（message_seq 升序排列），部分消息可能不存在，如撤回的消息 */
+    @Serializable(with = DropBadElementListSerializer::class)
     @SerialName("messages") val messages: List<IncomingMessage>,
     /** 下一页起始消息序列号 */
     @SerialName("next_message_seq") val nextMessageSeq: Long? = null,
 )
 
 @Serializable
-class GetResourceTempUrlInput(
+data class GetResourceTempUrlInput(
     /** 资源 ID */
     @SerialName("resource_id") val resourceId: String,
 )
 
 @Serializable
-class GetResourceTempUrlOutput(
+data class GetResourceTempUrlOutput(
     /** 临时资源链接 */
     @SerialName("url") val url: String,
 )
 
 @Serializable
-class GetForwardedMessagesInput(
+data class GetForwardedMessagesInput(
     /** 转发消息 ID */
     @SerialName("forward_id") val forwardId: String,
 )
 
 @Serializable
-class GetForwardedMessagesOutput(
+data class GetForwardedMessagesOutput(
     /** 转发消息内容 */
     @SerialName("messages") val messages: List<IncomingForwardedMessage>,
 )
 
 @Serializable
-class MarkMessageAsReadInput(
+data class MarkMessageAsReadInput(
     /** 消息场景 */
     @SerialName("message_scene") val messageScene: String,
     /** 好友 QQ 号或群号 */
@@ -1528,7 +1703,7 @@ typealias MarkMessageAsReadOutput = ApiEmptyStruct
 // ---- 好友 API ----
 
 @Serializable
-class SendFriendNudgeInput(
+data class SendFriendNudgeInput(
     /** 好友 QQ 号 */
     @SerialName("user_id") val userId: Long,
     /** 是否戳自己 */
@@ -1538,7 +1713,7 @@ class SendFriendNudgeInput(
 typealias SendFriendNudgeOutput = ApiEmptyStruct
 
 @Serializable
-class SendProfileLikeInput(
+data class SendProfileLikeInput(
     /** 好友 QQ 号 */
     @SerialName("user_id") val userId: Long,
     /** 点赞数量 */
@@ -1548,7 +1723,7 @@ class SendProfileLikeInput(
 typealias SendProfileLikeOutput = ApiEmptyStruct
 
 @Serializable
-class DeleteFriendInput(
+data class DeleteFriendInput(
     /** 好友 QQ 号 */
     @SerialName("user_id") val userId: Long,
 )
@@ -1556,7 +1731,7 @@ class DeleteFriendInput(
 typealias DeleteFriendOutput = ApiEmptyStruct
 
 @Serializable
-class GetFriendRequestsInput(
+data class GetFriendRequestsInput(
     /** 获取的最大请求数量 */
     @SerialName("limit") @LiteralDefault("20") val limit: Int = 20,
     /** `true` 表示只获取被过滤（由风险账号发起）的通知，`false` 表示只获取未被过滤的通知 */
@@ -1564,13 +1739,13 @@ class GetFriendRequestsInput(
 )
 
 @Serializable
-class GetFriendRequestsOutput(
+data class GetFriendRequestsOutput(
     /** 好友请求列表 */
     @SerialName("requests") val requests: List<FriendRequest>,
 )
 
 @Serializable
-class AcceptFriendRequestInput(
+data class AcceptFriendRequestInput(
     /** 请求发起者 UID */
     @SerialName("initiator_uid") val initiatorUid: String,
     /** 是否是被过滤的请求 */
@@ -1580,7 +1755,7 @@ class AcceptFriendRequestInput(
 typealias AcceptFriendRequestOutput = ApiEmptyStruct
 
 @Serializable
-class RejectFriendRequestInput(
+data class RejectFriendRequestInput(
     /** 请求发起者 UID */
     @SerialName("initiator_uid") val initiatorUid: String,
     /** 是否是被过滤的请求 */
@@ -1594,7 +1769,7 @@ typealias RejectFriendRequestOutput = ApiEmptyStruct
 // ---- 群聊 API ----
 
 @Serializable
-class SetGroupNameInput(
+data class SetGroupNameInput(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
     /** 新群名称 */
@@ -1604,7 +1779,7 @@ class SetGroupNameInput(
 typealias SetGroupNameOutput = ApiEmptyStruct
 
 @Serializable
-class SetGroupAvatarInput(
+data class SetGroupAvatarInput(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
     /** 头像文件 URI，支持 `file://` `http(s)://` `base64://` 三种格式 */
@@ -1614,7 +1789,7 @@ class SetGroupAvatarInput(
 typealias SetGroupAvatarOutput = ApiEmptyStruct
 
 @Serializable
-class SetGroupMemberCardInput(
+data class SetGroupMemberCardInput(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
     /** 被设置的群成员 QQ 号 */
@@ -1626,7 +1801,7 @@ class SetGroupMemberCardInput(
 typealias SetGroupMemberCardOutput = ApiEmptyStruct
 
 @Serializable
-class SetGroupMemberSpecialTitleInput(
+data class SetGroupMemberSpecialTitleInput(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
     /** 被设置的群成员 QQ 号 */
@@ -1638,7 +1813,7 @@ class SetGroupMemberSpecialTitleInput(
 typealias SetGroupMemberSpecialTitleOutput = ApiEmptyStruct
 
 @Serializable
-class SetGroupMemberAdminInput(
+data class SetGroupMemberAdminInput(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
     /** 被设置的 QQ 号 */
@@ -1650,7 +1825,7 @@ class SetGroupMemberAdminInput(
 typealias SetGroupMemberAdminOutput = ApiEmptyStruct
 
 @Serializable
-class SetGroupMemberMuteInput(
+data class SetGroupMemberMuteInput(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
     /** 被设置的 QQ 号 */
@@ -1662,7 +1837,7 @@ class SetGroupMemberMuteInput(
 typealias SetGroupMemberMuteOutput = ApiEmptyStruct
 
 @Serializable
-class SetGroupWholeMuteInput(
+data class SetGroupWholeMuteInput(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
     /** 是否开启全员禁言，`false` 表示取消全员禁言 */
@@ -1672,7 +1847,7 @@ class SetGroupWholeMuteInput(
 typealias SetGroupWholeMuteOutput = ApiEmptyStruct
 
 @Serializable
-class KickGroupMemberInput(
+data class KickGroupMemberInput(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
     /** 被踢的 QQ 号 */
@@ -1684,19 +1859,19 @@ class KickGroupMemberInput(
 typealias KickGroupMemberOutput = ApiEmptyStruct
 
 @Serializable
-class GetGroupAnnouncementsInput(
+data class GetGroupAnnouncementsInput(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
 )
 
 @Serializable
-class GetGroupAnnouncementsOutput(
+data class GetGroupAnnouncementsOutput(
     /** 群公告列表 */
     @SerialName("announcements") val announcements: List<GroupAnnouncementEntity>,
 )
 
 @Serializable
-class SendGroupAnnouncementInput(
+data class SendGroupAnnouncementInput(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
     /** 公告内容 */
@@ -1708,7 +1883,7 @@ class SendGroupAnnouncementInput(
 typealias SendGroupAnnouncementOutput = ApiEmptyStruct
 
 @Serializable
-class DeleteGroupAnnouncementInput(
+data class DeleteGroupAnnouncementInput(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
     /** 公告 ID */
@@ -1718,7 +1893,7 @@ class DeleteGroupAnnouncementInput(
 typealias DeleteGroupAnnouncementOutput = ApiEmptyStruct
 
 @Serializable
-class GetGroupEssenceMessagesInput(
+data class GetGroupEssenceMessagesInput(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
     /** 页码索引，从 0 开始 */
@@ -1728,7 +1903,7 @@ class GetGroupEssenceMessagesInput(
 )
 
 @Serializable
-class GetGroupEssenceMessagesOutput(
+data class GetGroupEssenceMessagesOutput(
     /** 精华消息列表 */
     @SerialName("messages") val messages: List<GroupEssenceMessage>,
     /** 是否已到最后一页 */
@@ -1736,7 +1911,7 @@ class GetGroupEssenceMessagesOutput(
 )
 
 @Serializable
-class SetGroupEssenceMessageInput(
+data class SetGroupEssenceMessageInput(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
     /** 消息序列号 */
@@ -1748,7 +1923,7 @@ class SetGroupEssenceMessageInput(
 typealias SetGroupEssenceMessageOutput = ApiEmptyStruct
 
 @Serializable
-class QuitGroupInput(
+data class QuitGroupInput(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
 )
@@ -1756,13 +1931,15 @@ class QuitGroupInput(
 typealias QuitGroupOutput = ApiEmptyStruct
 
 @Serializable
-class SendGroupMessageReactionInput(
+data class SendGroupMessageReactionInput(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
     /** 要回应的消息序列号 */
     @SerialName("message_seq") val messageSeq: Long,
-    /** 表情 ID */
+    /** 发送的回应的表情 ID */
     @SerialName("reaction") val reaction: String,
+    /** 发送的回应类型 */
+    @SerialName("reaction_type") @LiteralDefault("\"face\"") val reactionType: String = "face",
     /** 是否添加表情，`false` 表示取消 */
     @SerialName("is_add") @LiteralDefault("true") val isAdd: Boolean = true,
 )
@@ -1770,7 +1947,7 @@ class SendGroupMessageReactionInput(
 typealias SendGroupMessageReactionOutput = ApiEmptyStruct
 
 @Serializable
-class SendGroupNudgeInput(
+data class SendGroupNudgeInput(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
     /** 被戳的群成员 QQ 号 */
@@ -1780,7 +1957,7 @@ class SendGroupNudgeInput(
 typealias SendGroupNudgeOutput = ApiEmptyStruct
 
 @Serializable
-class GetGroupNotificationsInput(
+data class GetGroupNotificationsInput(
     /** 起始通知序列号 */
     @SerialName("start_notification_seq") val startNotificationSeq: Long? = null,
     /** `true` 表示只获取被过滤（由风险账号发起）的通知，`false` 表示只获取未被过滤的通知 */
@@ -1790,15 +1967,16 @@ class GetGroupNotificationsInput(
 )
 
 @Serializable
-class GetGroupNotificationsOutput(
+data class GetGroupNotificationsOutput(
     /** 获取到的群通知（notification_seq 降序排列），序列号不一定连续 */
+    @Serializable(with = DropBadElementListSerializer::class)
     @SerialName("notifications") val notifications: List<GroupNotification>,
     /** 下一页起始通知序列号 */
     @SerialName("next_notification_seq") val nextNotificationSeq: Long? = null,
 )
 
 @Serializable
-class AcceptGroupRequestInput(
+data class AcceptGroupRequestInput(
     /** 请求对应的通知序列号 */
     @SerialName("notification_seq") val notificationSeq: Long,
     /** 请求对应的通知类型 */
@@ -1812,7 +1990,7 @@ class AcceptGroupRequestInput(
 typealias AcceptGroupRequestOutput = ApiEmptyStruct
 
 @Serializable
-class RejectGroupRequestInput(
+data class RejectGroupRequestInput(
     /** 请求对应的通知序列号 */
     @SerialName("notification_seq") val notificationSeq: Long,
     /** 请求对应的通知类型 */
@@ -1828,7 +2006,7 @@ class RejectGroupRequestInput(
 typealias RejectGroupRequestOutput = ApiEmptyStruct
 
 @Serializable
-class AcceptGroupInvitationInput(
+data class AcceptGroupInvitationInput(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
     /** 邀请序列号 */
@@ -1838,7 +2016,7 @@ class AcceptGroupInvitationInput(
 typealias AcceptGroupInvitationOutput = ApiEmptyStruct
 
 @Serializable
-class RejectGroupInvitationInput(
+data class RejectGroupInvitationInput(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
     /** 邀请序列号 */
@@ -1850,7 +2028,7 @@ typealias RejectGroupInvitationOutput = ApiEmptyStruct
 // ---- 文件 API ----
 
 @Serializable
-class UploadPrivateFileInput(
+data class UploadPrivateFileInput(
     /** 好友 QQ 号 */
     @SerialName("user_id") val userId: Long,
     /** 文件 URI，支持 `file://` `http(s)://` `base64://` 三种格式 */
@@ -1860,13 +2038,13 @@ class UploadPrivateFileInput(
 )
 
 @Serializable
-class UploadPrivateFileOutput(
+data class UploadPrivateFileOutput(
     /** 文件 ID */
     @SerialName("file_id") val fileId: String,
 )
 
 @Serializable
-class UploadGroupFileInput(
+data class UploadGroupFileInput(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
     /** 目标文件夹 ID */
@@ -1878,13 +2056,13 @@ class UploadGroupFileInput(
 )
 
 @Serializable
-class UploadGroupFileOutput(
+data class UploadGroupFileOutput(
     /** 文件 ID */
     @SerialName("file_id") val fileId: String,
 )
 
 @Serializable
-class GetPrivateFileDownloadUrlInput(
+data class GetPrivateFileDownloadUrlInput(
     /** 好友 QQ 号 */
     @SerialName("user_id") val userId: Long,
     /** 文件 ID */
@@ -1894,13 +2072,13 @@ class GetPrivateFileDownloadUrlInput(
 )
 
 @Serializable
-class GetPrivateFileDownloadUrlOutput(
+data class GetPrivateFileDownloadUrlOutput(
     /** 文件下载链接 */
     @SerialName("download_url") val downloadUrl: String,
 )
 
 @Serializable
-class GetGroupFileDownloadUrlInput(
+data class GetGroupFileDownloadUrlInput(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
     /** 文件 ID */
@@ -1908,13 +2086,13 @@ class GetGroupFileDownloadUrlInput(
 )
 
 @Serializable
-class GetGroupFileDownloadUrlOutput(
+data class GetGroupFileDownloadUrlOutput(
     /** 文件下载链接 */
     @SerialName("download_url") val downloadUrl: String,
 )
 
 @Serializable
-class GetGroupFilesInput(
+data class GetGroupFilesInput(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
     /** 父文件夹 ID */
@@ -1922,7 +2100,7 @@ class GetGroupFilesInput(
 )
 
 @Serializable
-class GetGroupFilesOutput(
+data class GetGroupFilesOutput(
     /** 文件列表 */
     @SerialName("files") val files: List<GroupFileEntity>,
     /** 文件夹列表 */
@@ -1930,7 +2108,7 @@ class GetGroupFilesOutput(
 )
 
 @Serializable
-class MoveGroupFileInput(
+data class MoveGroupFileInput(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
     /** 文件 ID */
@@ -1944,7 +2122,7 @@ class MoveGroupFileInput(
 typealias MoveGroupFileOutput = ApiEmptyStruct
 
 @Serializable
-class RenameGroupFileInput(
+data class RenameGroupFileInput(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
     /** 文件 ID */
@@ -1958,7 +2136,7 @@ class RenameGroupFileInput(
 typealias RenameGroupFileOutput = ApiEmptyStruct
 
 @Serializable
-class DeleteGroupFileInput(
+data class DeleteGroupFileInput(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
     /** 文件 ID */
@@ -1968,7 +2146,7 @@ class DeleteGroupFileInput(
 typealias DeleteGroupFileOutput = ApiEmptyStruct
 
 @Serializable
-class CreateGroupFolderInput(
+data class CreateGroupFolderInput(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
     /** 文件夹名称 */
@@ -1976,13 +2154,13 @@ class CreateGroupFolderInput(
 )
 
 @Serializable
-class CreateGroupFolderOutput(
+data class CreateGroupFolderOutput(
     /** 文件夹 ID */
     @SerialName("folder_id") val folderId: String,
 )
 
 @Serializable
-class RenameGroupFolderInput(
+data class RenameGroupFolderInput(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
     /** 文件夹 ID */
@@ -1994,7 +2172,7 @@ class RenameGroupFolderInput(
 typealias RenameGroupFolderOutput = ApiEmptyStruct
 
 @Serializable
-class DeleteGroupFolderInput(
+data class DeleteGroupFolderInput(
     /** 群号 */
     @SerialName("group_id") val groupId: Long,
     /** 文件夹 ID */
@@ -2026,6 +2204,10 @@ sealed class ApiEndpoint<T : Any, R : Any>(val path: String) {
     object GetGroupMemberList : ApiEndpoint<GetGroupMemberListInput, GetGroupMemberListOutput>("/get_group_member_list")
     /** 获取群成员信息 */
     object GetGroupMemberInfo : ApiEndpoint<GetGroupMemberInfoInput, GetGroupMemberInfoOutput>("/get_group_member_info")
+    /** 获取置顶的好友和群列表 */
+    object GetPeerPins : ApiEndpoint<GetPeerPinsInput, GetPeerPinsOutput>("/get_peer_pins")
+    /** 设置好友或群的置顶状态 */
+    object SetPeerPin : ApiEndpoint<SetPeerPinInput, SetPeerPinOutput>("/set_peer_pin")
     /** 设置 QQ 账号头像 */
     object SetAvatar : ApiEndpoint<SetAvatarInput, SetAvatarOutput>("/set_avatar")
     /** 设置 QQ 账号昵称 */

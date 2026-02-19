@@ -1,4 +1,4 @@
-// Generated from Milky 1.2 (1.2.0-rc.1)
+// Generated from Milky 1.2 (1.2.0-rc.2)
 @file:OptIn(ExperimentalSerializationApi::class)
 
 package org.ntqqrev.milky
@@ -10,7 +10,7 @@ import kotlinx.serialization.encoding.*
 import kotlinx.serialization.json.*
 
 const val milkyVersion = "1.2"
-const val milkyPackageVersion = "1.2.0-rc.1"
+const val milkyPackageVersion = "1.2.0-rc.2"
 
 @Target(AnnotationTarget.PROPERTY)
 annotation class LiteralDefault(val value: String)
@@ -468,6 +468,8 @@ sealed class Event {
             @SerialName("message_seq") val messageSeq: Long,
             /** 表情 ID */
             @SerialName("face_id") val faceId: String,
+            /** 收到的回应类型 */
+            @SerialName("reaction_type") val reactionType: String,
             /** 是否为添加，`false` 表示取消回应 */
             @SerialName("is_add") val isAdd: Boolean,
         )

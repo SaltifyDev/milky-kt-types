@@ -1,4 +1,4 @@
-// Generated from Milky 1.2 (1.2.0-rc.2)
+// Generated from Milky 1.2 (1.2.0-rc.3)
 @file:OptIn(ExperimentalSerializationApi::class)
 
 package org.ntqqrev.milky
@@ -10,7 +10,7 @@ import kotlinx.serialization.encoding.*
 import kotlinx.serialization.json.*
 
 const val milkyVersion = "1.2"
-const val milkyPackageVersion = "1.2.0-rc.2"
+const val milkyPackageVersion = "1.2.0-rc.3"
 
 @Target(AnnotationTarget.PROPERTY)
 annotation class LiteralDefault(val value: String)
@@ -115,6 +115,12 @@ sealed class Event {
             /** 下线原因 */
             @SerialName("reason") val reason: String,
         )
+
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.reason]
+         */
+        val reason: String get() = data.reason
     }
 
     /** 消息接收事件 */
@@ -155,6 +161,37 @@ sealed class Event {
             /** 撤回提示的后缀文本 */
             @SerialName("display_suffix") val displaySuffix: String,
         )
+
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.messageScene]
+         */
+        val messageScene: String get() = data.messageScene
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.peerId]
+         */
+        val peerId: Long get() = data.peerId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.messageSeq]
+         */
+        val messageSeq: Long get() = data.messageSeq
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.senderId]
+         */
+        val senderId: Long get() = data.senderId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.operatorId]
+         */
+        val operatorId: Long get() = data.operatorId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.displaySuffix]
+         */
+        val displaySuffix: String get() = data.displaySuffix
     }
 
     /** 会话置顶变更事件 */
@@ -177,6 +214,22 @@ sealed class Event {
             /** 是否被置顶, `false` 表示取消置顶 */
             @SerialName("is_pinned") val isPinned: Boolean,
         )
+
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.messageScene]
+         */
+        val messageScene: String get() = data.messageScene
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.peerId]
+         */
+        val peerId: Long get() = data.peerId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.isPinned]
+         */
+        val isPinned: Boolean get() = data.isPinned
     }
 
     /** 好友请求事件 */
@@ -201,6 +254,27 @@ sealed class Event {
             /** 申请来源 */
             @SerialName("via") val via: String,
         )
+
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.initiatorId]
+         */
+        val initiatorId: Long get() = data.initiatorId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.initiatorUid]
+         */
+        val initiatorUid: String get() = data.initiatorUid
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.comment]
+         */
+        val comment: String get() = data.comment
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.via]
+         */
+        val via: String get() = data.via
     }
 
     /** 入群请求事件 */
@@ -227,6 +301,32 @@ sealed class Event {
             /** 申请附加信息 */
             @SerialName("comment") val comment: String,
         )
+
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.groupId]
+         */
+        val groupId: Long get() = data.groupId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.notificationSeq]
+         */
+        val notificationSeq: Long get() = data.notificationSeq
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.isFiltered]
+         */
+        val isFiltered: Boolean get() = data.isFiltered
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.initiatorId]
+         */
+        val initiatorId: Long get() = data.initiatorId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.comment]
+         */
+        val comment: String get() = data.comment
     }
 
     /** 群成员邀请他人入群请求事件 */
@@ -251,6 +351,27 @@ sealed class Event {
             /** 被邀请者 QQ 号 */
             @SerialName("target_user_id") val targetUserId: Long,
         )
+
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.groupId]
+         */
+        val groupId: Long get() = data.groupId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.notificationSeq]
+         */
+        val notificationSeq: Long get() = data.notificationSeq
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.initiatorId]
+         */
+        val initiatorId: Long get() = data.initiatorId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.targetUserId]
+         */
+        val targetUserId: Long get() = data.targetUserId
     }
 
     /** 他人邀请自身入群事件 */
@@ -272,7 +393,30 @@ sealed class Event {
             @SerialName("invitation_seq") val invitationSeq: Long,
             /** 邀请者 QQ 号 */
             @SerialName("initiator_id") val initiatorId: Long,
+            /** 来源群号，如果是通过 QQ 群邀请 */
+            @SerialName("source_group_id") val sourceGroupId: Long? = null,
         )
+
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.groupId]
+         */
+        val groupId: Long get() = data.groupId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.invitationSeq]
+         */
+        val invitationSeq: Long get() = data.invitationSeq
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.initiatorId]
+         */
+        val initiatorId: Long get() = data.initiatorId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.sourceGroupId]
+         */
+        val sourceGroupId: Long? get() = data.sourceGroupId
     }
 
     /** 好友戳一戳事件 */
@@ -301,6 +445,37 @@ sealed class Event {
             /** 戳一戳提示的动作图片 URL，用于取代动作提示文本 */
             @SerialName("display_action_img_url") val displayActionImgUrl: String,
         )
+
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.userId]
+         */
+        val userId: Long get() = data.userId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.isSelfSend]
+         */
+        val isSelfSend: Boolean get() = data.isSelfSend
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.isSelfReceive]
+         */
+        val isSelfReceive: Boolean get() = data.isSelfReceive
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.displayAction]
+         */
+        val displayAction: String get() = data.displayAction
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.displaySuffix]
+         */
+        val displaySuffix: String get() = data.displaySuffix
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.displayActionImgUrl]
+         */
+        val displayActionImgUrl: String get() = data.displayActionImgUrl
     }
 
     /** 好友文件上传事件 */
@@ -329,6 +504,37 @@ sealed class Event {
             /** 是否是自己发送的文件 */
             @SerialName("is_self") val isSelf: Boolean,
         )
+
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.userId]
+         */
+        val userId: Long get() = data.userId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.fileId]
+         */
+        val fileId: String get() = data.fileId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.fileName]
+         */
+        val fileName: String get() = data.fileName
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.fileSize]
+         */
+        val fileSize: Long get() = data.fileSize
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.fileHash]
+         */
+        val fileHash: String get() = data.fileHash
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.isSelf]
+         */
+        val isSelf: Boolean get() = data.isSelf
     }
 
     /** 群管理员变更事件 */
@@ -353,6 +559,27 @@ sealed class Event {
             /** 是否被设置为管理员，`false` 表示被取消管理员 */
             @SerialName("is_set") val isSet: Boolean,
         )
+
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.groupId]
+         */
+        val groupId: Long get() = data.groupId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.userId]
+         */
+        val userId: Long get() = data.userId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.operatorId]
+         */
+        val operatorId: Long get() = data.operatorId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.isSet]
+         */
+        val isSet: Boolean get() = data.isSet
     }
 
     /** 群精华消息变更事件 */
@@ -377,6 +604,27 @@ sealed class Event {
             /** 是否被设置为精华，`false` 表示被取消精华 */
             @SerialName("is_set") val isSet: Boolean,
         )
+
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.groupId]
+         */
+        val groupId: Long get() = data.groupId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.messageSeq]
+         */
+        val messageSeq: Long get() = data.messageSeq
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.operatorId]
+         */
+        val operatorId: Long get() = data.operatorId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.isSet]
+         */
+        val isSet: Boolean get() = data.isSet
     }
 
     /** 群成员增加事件 */
@@ -401,6 +649,27 @@ sealed class Event {
             /** 邀请者 QQ 号，如果是邀请入群 */
             @SerialName("invitor_id") val invitorId: Long? = null,
         )
+
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.groupId]
+         */
+        val groupId: Long get() = data.groupId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.userId]
+         */
+        val userId: Long get() = data.userId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.operatorId]
+         */
+        val operatorId: Long? get() = data.operatorId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.invitorId]
+         */
+        val invitorId: Long? get() = data.invitorId
     }
 
     /** 群成员减少事件 */
@@ -423,6 +692,22 @@ sealed class Event {
             /** 管理员 QQ 号，如果是管理员踢出 */
             @SerialName("operator_id") val operatorId: Long? = null,
         )
+
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.groupId]
+         */
+        val groupId: Long get() = data.groupId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.userId]
+         */
+        val userId: Long get() = data.userId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.operatorId]
+         */
+        val operatorId: Long? get() = data.operatorId
     }
 
     /** 群名称变更事件 */
@@ -445,6 +730,22 @@ sealed class Event {
             /** 操作者 QQ 号 */
             @SerialName("operator_id") val operatorId: Long,
         )
+
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.groupId]
+         */
+        val groupId: Long get() = data.groupId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.newGroupName]
+         */
+        val newGroupName: String get() = data.newGroupName
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.operatorId]
+         */
+        val operatorId: Long get() = data.operatorId
     }
 
     /** 群消息表情回应事件 */
@@ -473,6 +774,37 @@ sealed class Event {
             /** 是否为添加，`false` 表示取消回应 */
             @SerialName("is_add") val isAdd: Boolean,
         )
+
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.groupId]
+         */
+        val groupId: Long get() = data.groupId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.userId]
+         */
+        val userId: Long get() = data.userId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.messageSeq]
+         */
+        val messageSeq: Long get() = data.messageSeq
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.faceId]
+         */
+        val faceId: String get() = data.faceId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.reactionType]
+         */
+        val reactionType: String get() = data.reactionType
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.isAdd]
+         */
+        val isAdd: Boolean get() = data.isAdd
     }
 
     /** 群禁言事件 */
@@ -497,6 +829,27 @@ sealed class Event {
             /** 禁言时长（秒），为 0 表示取消禁言 */
             @SerialName("duration") val duration: Int,
         )
+
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.groupId]
+         */
+        val groupId: Long get() = data.groupId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.userId]
+         */
+        val userId: Long get() = data.userId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.operatorId]
+         */
+        val operatorId: Long get() = data.operatorId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.duration]
+         */
+        val duration: Int get() = data.duration
     }
 
     /** 群全体禁言事件 */
@@ -519,6 +872,22 @@ sealed class Event {
             /** 是否全员禁言，`false` 表示取消全员禁言 */
             @SerialName("is_mute") val isMute: Boolean,
         )
+
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.groupId]
+         */
+        val groupId: Long get() = data.groupId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.operatorId]
+         */
+        val operatorId: Long get() = data.operatorId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.isMute]
+         */
+        val isMute: Boolean get() = data.isMute
     }
 
     /** 群戳一戳事件 */
@@ -547,6 +916,37 @@ sealed class Event {
             /** 戳一戳提示的动作图片 URL，用于取代动作提示文本 */
             @SerialName("display_action_img_url") val displayActionImgUrl: String,
         )
+
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.groupId]
+         */
+        val groupId: Long get() = data.groupId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.senderId]
+         */
+        val senderId: Long get() = data.senderId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.receiverId]
+         */
+        val receiverId: Long get() = data.receiverId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.displayAction]
+         */
+        val displayAction: String get() = data.displayAction
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.displaySuffix]
+         */
+        val displaySuffix: String get() = data.displaySuffix
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.displayActionImgUrl]
+         */
+        val displayActionImgUrl: String get() = data.displayActionImgUrl
     }
 
     /** 群文件上传事件 */
@@ -573,6 +973,32 @@ sealed class Event {
             /** 文件大小（字节） */
             @SerialName("file_size") val fileSize: Long,
         )
+
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.groupId]
+         */
+        val groupId: Long get() = data.groupId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.userId]
+         */
+        val userId: Long get() = data.userId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.fileId]
+         */
+        val fileId: String get() = data.fileId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.fileName]
+         */
+        val fileName: String get() = data.fileName
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.fileSize]
+         */
+        val fileSize: Long get() = data.fileSize
     }
 }
 
@@ -947,6 +1373,12 @@ sealed class IncomingSegment {
             /** 文本内容 */
             @SerialName("text") val text: String,
         )
+
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.text]
+         */
+        val text: String get() = data.text
     }
 
     /** 提及消息段 */
@@ -963,6 +1395,17 @@ sealed class IncomingSegment {
             /** 去掉 `@` 前缀的提及的名称 */
             @SerialName("name") val name: String,
         )
+
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.userId]
+         */
+        val userId: Long get() = data.userId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.name]
+         */
+        val name: String get() = data.name
     }
 
     /** 提及全体消息段 */
@@ -974,6 +1417,7 @@ sealed class IncomingSegment {
     ) : IncomingSegment() {
         @Serializable
         class Data
+
     }
 
     /** 表情消息段 */
@@ -990,6 +1434,17 @@ sealed class IncomingSegment {
             /** 是否为超级表情 */
             @SerialName("is_large") val isLarge: Boolean,
         )
+
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.faceId]
+         */
+        val faceId: String get() = data.faceId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.isLarge]
+         */
+        val isLarge: Boolean get() = data.isLarge
     }
 
     /** 回复消息段 */
@@ -1013,6 +1468,32 @@ sealed class IncomingSegment {
             @Serializable(with = TransformUnknownSegmentListSerializer::class)
             @SerialName("segments") val segments: List<IncomingSegment>,
         )
+
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.messageSeq]
+         */
+        val messageSeq: Long get() = data.messageSeq
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.senderId]
+         */
+        val senderId: Long get() = data.senderId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.senderName]
+         */
+        val senderName: String? get() = data.senderName
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.time]
+         */
+        val time: Long get() = data.time
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.segments]
+         */
+        val segments: List<IncomingSegment> get() = data.segments
     }
 
     /** 图片消息段 */
@@ -1037,6 +1518,37 @@ sealed class IncomingSegment {
             /** 图片类型 */
             @SerialName("sub_type") val subType: String,
         )
+
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.resourceId]
+         */
+        val resourceId: String get() = data.resourceId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.tempUrl]
+         */
+        val tempUrl: String get() = data.tempUrl
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.width]
+         */
+        val width: Int get() = data.width
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.height]
+         */
+        val height: Int get() = data.height
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.summary]
+         */
+        val summary: String get() = data.summary
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.subType]
+         */
+        val subType: String get() = data.subType
     }
 
     /** 语音消息段 */
@@ -1055,6 +1567,22 @@ sealed class IncomingSegment {
             /** 语音时长（秒） */
             @SerialName("duration") val duration: Int,
         )
+
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.resourceId]
+         */
+        val resourceId: String get() = data.resourceId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.tempUrl]
+         */
+        val tempUrl: String get() = data.tempUrl
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.duration]
+         */
+        val duration: Int get() = data.duration
     }
 
     /** 视频消息段 */
@@ -1077,6 +1605,32 @@ sealed class IncomingSegment {
             /** 视频时长（秒） */
             @SerialName("duration") val duration: Int,
         )
+
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.resourceId]
+         */
+        val resourceId: String get() = data.resourceId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.tempUrl]
+         */
+        val tempUrl: String get() = data.tempUrl
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.width]
+         */
+        val width: Int get() = data.width
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.height]
+         */
+        val height: Int get() = data.height
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.duration]
+         */
+        val duration: Int get() = data.duration
     }
 
     /** 文件消息段 */
@@ -1097,6 +1651,27 @@ sealed class IncomingSegment {
             /** 文件的 TriSHA1 哈希值，仅在私聊文件中存在 */
             @SerialName("file_hash") val fileHash: String? = null,
         )
+
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.fileId]
+         */
+        val fileId: String get() = data.fileId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.fileName]
+         */
+        val fileName: String get() = data.fileName
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.fileSize]
+         */
+        val fileSize: Long get() = data.fileSize
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.fileHash]
+         */
+        val fileHash: String? get() = data.fileHash
     }
 
     /** 合并转发消息段 */
@@ -1117,6 +1692,27 @@ sealed class IncomingSegment {
             /** 合并转发摘要 */
             @SerialName("summary") val summary: String,
         )
+
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.forwardId]
+         */
+        val forwardId: String get() = data.forwardId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.title]
+         */
+        val title: String get() = data.title
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.preview]
+         */
+        val preview: List<String> get() = data.preview
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.summary]
+         */
+        val summary: String get() = data.summary
     }
 
     /** 市场表情消息段 */
@@ -1139,6 +1735,32 @@ sealed class IncomingSegment {
             /** 市场表情 URL */
             @SerialName("url") val url: String,
         )
+
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.emojiPackageId]
+         */
+        val emojiPackageId: Int get() = data.emojiPackageId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.emojiId]
+         */
+        val emojiId: String get() = data.emojiId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.key]
+         */
+        val key: String get() = data.key
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.summary]
+         */
+        val summary: String get() = data.summary
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.url]
+         */
+        val url: String get() = data.url
     }
 
     /** 小程序消息段 */
@@ -1155,6 +1777,17 @@ sealed class IncomingSegment {
             /** 小程序 JSON 数据 */
             @SerialName("json_payload") val jsonPayload: String,
         )
+
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.appName]
+         */
+        val appName: String get() = data.appName
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.jsonPayload]
+         */
+        val jsonPayload: String get() = data.jsonPayload
     }
 
     /** XML 消息段 */
@@ -1171,6 +1804,17 @@ sealed class IncomingSegment {
             /** XML 数据 */
             @SerialName("xml_payload") val xmlPayload: String,
         )
+
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.serviceId]
+         */
+        val serviceId: Int get() = data.serviceId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.xmlPayload]
+         */
+        val xmlPayload: String get() = data.xmlPayload
     }
 }
 
@@ -1202,6 +1846,12 @@ sealed class OutgoingSegment {
             /** 文本内容 */
             @SerialName("text") val text: String,
         )
+
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.text]
+         */
+        val text: String get() = data.text
     }
 
     /** 提及消息段 */
@@ -1216,6 +1866,12 @@ sealed class OutgoingSegment {
             /** 提及的 QQ 号 */
             @SerialName("user_id") val userId: Long,
         )
+
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.userId]
+         */
+        val userId: Long get() = data.userId
     }
 
     /** 提及全体消息段 */
@@ -1227,6 +1883,7 @@ sealed class OutgoingSegment {
     ) : OutgoingSegment() {
         @Serializable
         class Data
+
     }
 
     /** 表情消息段 */
@@ -1243,6 +1900,17 @@ sealed class OutgoingSegment {
             /** 是否为超级表情 */
             @SerialName("is_large") @LiteralDefault("false") val isLarge: Boolean = false,
         )
+
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.faceId]
+         */
+        val faceId: String get() = data.faceId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.isLarge]
+         */
+        val isLarge: Boolean get() = data.isLarge
     }
 
     /** 回复消息段 */
@@ -1257,6 +1925,12 @@ sealed class OutgoingSegment {
             /** 被引用的消息序列号 */
             @SerialName("message_seq") val messageSeq: Long,
         )
+
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.messageSeq]
+         */
+        val messageSeq: Long get() = data.messageSeq
     }
 
     /** 图片消息段 */
@@ -1275,6 +1949,22 @@ sealed class OutgoingSegment {
             /** 图片预览文本 */
             @SerialName("summary") val summary: String? = null,
         )
+
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.uri]
+         */
+        val uri: String get() = data.uri
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.subType]
+         */
+        val subType: String get() = data.subType
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.summary]
+         */
+        val summary: String? get() = data.summary
     }
 
     /** 语音消息段 */
@@ -1289,6 +1979,12 @@ sealed class OutgoingSegment {
             /** 文件 URI，支持 `file://` `http(s)://` `base64://` 三种格式 */
             @SerialName("uri") val uri: String,
         )
+
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.uri]
+         */
+        val uri: String get() = data.uri
     }
 
     /** 视频消息段 */
@@ -1305,6 +2001,17 @@ sealed class OutgoingSegment {
             /** 封面图片 URI */
             @SerialName("thumb_uri") val thumbUri: String? = null,
         )
+
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.uri]
+         */
+        val uri: String get() = data.uri
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.thumbUri]
+         */
+        val thumbUri: String? get() = data.thumbUri
     }
 
     /** 合并转发消息段 */
@@ -1327,6 +2034,32 @@ sealed class OutgoingSegment {
             /** 合并转发的预览外显文本，仅对移动端 QQ 有效 */
             @SerialName("prompt") val prompt: String? = null,
         )
+
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.messages]
+         */
+        val messages: List<OutgoingForwardedMessage> get() = data.messages
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.title]
+         */
+        val title: String? get() = data.title
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.preview]
+         */
+        val preview: List<String>? get() = data.preview
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.summary]
+         */
+        val summary: String? get() = data.summary
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.prompt]
+         */
+        val prompt: String? get() = data.prompt
     }
 
     /** 小程序消息段 */
@@ -1341,6 +2074,12 @@ sealed class OutgoingSegment {
             /** 小程序 JSON 数据 */
             @SerialName("json_payload") val jsonPayload: String,
         )
+
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [Data.jsonPayload]
+         */
+        val jsonPayload: String get() = data.jsonPayload
     }
 }
 

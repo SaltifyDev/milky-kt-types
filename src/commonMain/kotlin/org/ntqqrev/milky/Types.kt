@@ -133,7 +133,33 @@ sealed class Event {
         @SerialName("self_id") override val selfId: Long,
         /** 数据字段 */
         @SerialName("data") val data: IncomingMessage
-    ) : Event()
+    ) : Event() {
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [IncomingMessage.peerId]
+         */
+        val peerId: Long get() = data.peerId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [IncomingMessage.messageSeq]
+         */
+        val messageSeq: Long get() = data.messageSeq
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [IncomingMessage.senderId]
+         */
+        val senderId: Long get() = data.senderId
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [IncomingMessage.time]
+         */
+        val dataTime: Long get() = data.time
+        /**
+         * 访问器字段，对应 `data` 中的同名字段
+         * @see [IncomingMessage.segments]
+         */
+        val segments: List<IncomingSegment> get() = data.segments
+    }
 
     /** 消息撤回事件 */
     @Serializable

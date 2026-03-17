@@ -3,8 +3,8 @@
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 
 plugins {
-    kotlin("multiplatform") version "2.3.10"
-    kotlin("plugin.serialization") version "2.3.10"
+    kotlin("multiplatform") version "2.3.20"
+    kotlin("plugin.serialization") version "2.3.20"
     id("com.vanniktech.maven.publish") version "0.36.0"
 }
 
@@ -31,11 +31,11 @@ kotlin {
     linuxArm64()
     linuxX64()
     macosArm64()
-    macosX64()
+    // macosX64()
     mingwX64()
     tvosArm64()
     tvosSimulatorArm64()
-    tvosX64()
+    // tvosX64()
     wasmJs {
         browser()
         nodejs()
@@ -48,7 +48,7 @@ kotlin {
     watchosArm64()
     watchosDeviceArm64()
     watchosSimulatorArm64()
-    watchosX64()
+    // watchosX64()
 
     sourceSets {
         commonMain.dependencies {

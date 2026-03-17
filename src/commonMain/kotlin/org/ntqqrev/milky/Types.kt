@@ -1,4 +1,4 @@
-// Generated from Milky 1.2 (1.2.0-rc.3)
+// Generated from Milky 1.2 (1.2.0-rc.4)
 @file:OptIn(ExperimentalSerializationApi::class)
 
 package org.ntqqrev.milky
@@ -10,7 +10,7 @@ import kotlinx.serialization.encoding.*
 import kotlinx.serialization.json.*
 
 const val milkyVersion = "1.2"
-const val milkyPackageVersion = "1.2.0-rc.3"
+const val milkyPackageVersion = "1.2.0-rc.4"
 
 @Target(AnnotationTarget.PROPERTY)
 annotation class LiteralDefault(val value: String)
@@ -1065,6 +1065,16 @@ data class GroupEntity(
     @SerialName("member_count") val memberCount: Int,
     /** 群容量 */
     @SerialName("max_member_count") val maxMemberCount: Int,
+    /** 群备注 */
+    @SerialName("remark") val remark: String,
+    /** 群创建时间，Unix 时间戳（秒） */
+    @SerialName("created_time") val createdTime: Long,
+    /** 群简介 */
+    @SerialName("description") val description: String,
+    /** 加群验证问题 */
+    @SerialName("question") val question: String,
+    /** 群公告预览 */
+    @SerialName("announcement") val announcement: String,
 )
 
 /** 群成员实体 */

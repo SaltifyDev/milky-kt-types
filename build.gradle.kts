@@ -9,7 +9,7 @@ plugins {
 }
 
 group = "org.ntqqrev"
-version = "1.2.0-RC4"
+version = "1.2.0-rc.5"
 
 repositories {
     mavenCentral()

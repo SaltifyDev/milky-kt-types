@@ -1,4 +1,4 @@
-// Generated from Milky 1.2 (1.2.0)
+// Generated from Milky 1.2 (1.2.1-rc.1)
 @file:OptIn(ExperimentalSerializationApi::class)
 
 package org.ntqqrev.milky
@@ -10,7 +10,7 @@ import kotlinx.serialization.encoding.*
 import kotlinx.serialization.json.*
 
 const val milkyVersion = "1.2"
-const val milkyPackageVersion = "1.2.0"
+const val milkyPackageVersion = "1.2.1-rc.1"
 
 @Target(AnnotationTarget.PROPERTY)
 annotation class LiteralDefault(val value: String)

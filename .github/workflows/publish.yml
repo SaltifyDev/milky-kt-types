@@ -1,11 +1,15 @@
 name: Publish and Release to Maven Central
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - 'build.gradle.kts'
 
 jobs:
   publish:
     name: Release build and publish
     runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[publish]')
     steps:
       - name: Check out code
         uses: actions/checkout@v4

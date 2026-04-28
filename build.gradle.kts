@@ -3,7 +3,7 @@
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 
 plugins {
-    kotlin("multiplatform") version "2.3.20"
+    kotlin("multiplatform") version "2.3.21"
     kotlin("plugin.serialization") version "2.3.20"
     id("com.vanniktech.maven.publish") version "0.36.0"
 }
